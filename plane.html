@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<!--
+  jiraPlane overlay — ALL visuals live in this one self-contained file.
+  Event data arrives via query string: ?type=assigned|mention|comment&issueKey=...&snippet=...
+  The flight animation runs ~5s; main.js destroys the window at 6s (FLIGHT_MS).
+-->
+<head>
+<meta charset="utf-8">
+<style>
+  html, body {
+    margin: 0;
+    overflow: hidden;
+    background: transparent;
+    pointer-events: none; /* belt-and-suspenders with setIgnoreMouseEvents */
+  }
+  .flight {
+    position: fixed;
+    top: 30vh;
+    left: 0;
+    animation: fly 5s linear forwards;
+  }
+  @keyframes fly {
+    from { transform: translateX(-110%); }
+    to   { transform: translateX(calc(100vw + 40px)); } /* clear the shadow too */
+  }
+  .bob {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: bob 1.3s ease-in-out infinite alternate;
+  }
+  @keyframes bob {
+    from { transform: translateY(-8px); }
+    to   { transform: translateY(8px); }
+  }
+  .banner {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #333;
+    border-radius: 999px;
+    padding: 8px 18px;
+    font: 600 17px -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #222;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  }
+  .rope {
+    width: 28px;
+    height: 2px;
+    background: #333;
+  }
+  .plane {
+    font-size: 52px;
+    line-height: 1;
+    transform: rotate(45deg); /* ✈️ points NE; aim it along the flight path */
+  }
+</style>
+</head>
+<body>
+  <div class="flight">
+    <div class="bob">
+      <div class="banner" id="banner"></div>
+      <div class="rope"></div>
+      <div class="plane">&#9992;&#65039;</div>
+    </div>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const labels = {
+      assigned: 'Assigned to you',
+      mention: 'You were mentioned',
+      comment: 'New comment',
+    };
+    const label = labels[params.get('type')] || 'Jira update';
+    const issueKey = params.get('issueKey') || '';
+    const snippet = params.get('snippet') || '';
+    const parts = [label, issueKey && snippet ? issueKey + ': ' + snippet : issueKey || snippet];
+    document.getElementById('banner').textContent = parts.filter(Boolean).join(' — ');
+  </script>
+</body>
+</html>

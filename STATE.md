@@ -14,9 +14,12 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
-- **Fresh bootstrap — no code yet.** Start with **#1** (scaffold Electron app + Test flight
-  overlay), then **#2** (port the Jira poller). Both are `ready-for-agent`. **#3** (UI phase,
-  3 plane.html variants) is blocked until #1–#2 are owner-accepted.
+- **#1 accepted & committed** (tray + overlay queue + plane.html). `TEST_FLIGHT=1 npm start`
+  fires a flight on launch. Next: **#2** (port the Jira poller from
+  `~/Developer/JiraAlerts/src/jira_client.py`, READ-ONLY). **#3** (UI phase, 3 plane.html
+  variants) unblocks after #2 is owner-accepted; QuakPit technique notes are on #3.
+- Owner pointed at Ooble-Studio/QuakPit (MIT, the original duck-plane meeting app) as
+  inspiration — reviewed; borrowable UI techniques filed as a comment on #3.
 - Porting reference: `~/Developer/JiraAlerts/src/jira_client.py` (READ-ONLY — never modify
   JiraAlerts from here). Keep its patterns: dedup seen-set, silent first-run seed, flood valve.
 
