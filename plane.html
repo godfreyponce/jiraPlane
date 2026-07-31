@@ -2,7 +2,8 @@
 <html>
 <!--
   jiraPlane overlay — ALL visuals live in this one self-contained file.
-  Event data arrives via query string: ?type=assigned|mention|comment&issueKey=...&snippet=...
+  Event data arrives via query string: ?type=assigned|mention|comment|digest&issueKey=...&snippet=...
+  (digest has no label — the banner is just the snippet, e.g. "7 Jira updates")
   The flight animation runs ~5s; main.js destroys the window at 6s (FLIGHT_MS).
 -->
 <head>
@@ -70,8 +71,9 @@
       assigned: 'Assigned to you',
       mention: 'You were mentioned',
       comment: 'New comment',
+      digest: '', // banner is just the snippet ("7 Jira updates")
     };
-    const label = labels[params.get('type')] || 'Jira update';
+    const label = labels[params.get('type')] ?? 'Jira update';
     const issueKey = params.get('issueKey') || '';
     const snippet = params.get('snippet') || '';
     const parts = [label, issueKey && snippet ? issueKey + ': ' + snippet : issueKey || snippet];

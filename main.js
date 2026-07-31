@@ -1,11 +1,12 @@
 const { app, Tray, Menu, BrowserWindow, screen, nativeImage } = require('electron');
 const path = require('path');
+const poller = require('./poller');
 
 // plane.html's flight animation runs ~5s; destroy the overlay shortly after.
 const FLIGHT_MS = 6000;
 
 let tray = null;
-let pollingPaused = false; // stub — #2 wires the Jira poller to this
+let pollingPaused = false;
 
 const flightQueue = [];
 let activeFlight = null;
@@ -60,6 +61,28 @@ function createOverlay(event) {
   return win;
 }
 
+function startPolling() {
+  if (poller.configError) {
+    console.error(`Polling disabled: ${poller.configError.message}`);
+    return;
+  }
+  let cycleInFlight = false;
+  const tick = async () => {
+    // Skip while paused, and never overlap a slow cycle with the next one.
+    if (pollingPaused || cycleInFlight) return;
+    cycleInFlight = true;
+    try {
+      (await poller.cycle()).forEach(enqueueFlight);
+    } catch (e) {
+      console.error(`poll cycle failed: ${e.message}`);
+    } finally {
+      cycleInFlight = false;
+    }
+  };
+  tick();
+  setInterval(tick, poller.config.pollSeconds * 1000);
+}
+
 function testFlight() {
   enqueueFlight({
     type: 'assigned',
@@ -92,6 +115,7 @@ app.whenReady().then(() => {
   tray = new Tray(icon);
   tray.setToolTip('jiraPlane');
   tray.setContextMenu(buildMenu());
+  startPolling();
   if (process.env.TEST_FLIGHT === '1') testFlight();
 });
 
