@@ -4,7 +4,7 @@
   jiraPlane overlay — ALL visuals live in this one self-contained file.
   Event data arrives via query string: ?type=assigned|mention|comment|digest&issueKey=...&snippet=...
   (digest has no label — the banner is just the snippet, e.g. "7 Jira updates")
-  The flight animation runs ~5s; main.js destroys the window at 6s (FLIGHT_MS).
+  The flight animation runs ~10s; main.js destroys the window at 11s (FLIGHT_MS).
 -->
 <head>
 <meta charset="utf-8">
@@ -19,7 +19,7 @@
     position: fixed;
     top: 30vh;
     left: 0;
-    animation: fly 5s linear forwards;
+    animation: fly 10s linear forwards;
   }
   @keyframes fly {
     from { transform: translateX(-110%); }

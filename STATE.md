@@ -10,18 +10,21 @@ independent of JiraAlerts and Power Automate. Repo: github.com/godfreyponce/jira
 `~/Developer/docs/superpowers/specs/2026-07-23-jiraplane-design.md`.
 Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
-**Last updated: 2026-07-23**
+**Last updated: 2026-07-31**
 
 ## Now
 
+- **#2 ACCEPTED (2026-07-31):** live polling works — owner's self-assign test flew the
+  plane before the Teams message arrived. Ported extras: skips own-authored comments (so
+  self-comments can never fly — test the comment stream via a colleague's mention);
+  "reassigned away" stream deliberately NOT ported (issue #2 scope). Flood valve testable
+  with `MAX_EVENTS_PER_CYCLE=0 npm start`.
+- **Next: #3 (UI phase)** — owner greenlit: redesign plane like QuakPit + slower flight.
+  Flight slowed to 10s as a first guess (was 5s) — tune during #3. QuakPit technique notes
+  are a comment on issue #3. plane.html query contract now includes `type=digest`
+  (banner = snippet only).
 - **#1 accepted & committed** (tray + overlay queue + plane.html). `TEST_FLIGHT=1 npm start`
-  fires a flight on launch. Next: **#2** (port the Jira poller from
-  `~/Developer/JiraAlerts/src/jira_client.py`, READ-ONLY). **#3** (UI phase, 3 plane.html
-  variants) unblocks after #2 is owner-accepted; QuakPit technique notes are on #3.
-- Owner pointed at Ooble-Studio/QuakPit (MIT, the original duck-plane meeting app) as
-  inspiration — reviewed; borrowable UI techniques filed as a comment on #3.
-- Porting reference: `~/Developer/JiraAlerts/src/jira_client.py` (READ-ONLY — never modify
-  JiraAlerts from here). Keep its patterns: dedup seen-set, silent first-run seed, flood valve.
+  fires a flight on launch.
 
 ## Run / verify (once #1 lands)
 

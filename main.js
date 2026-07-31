@@ -2,8 +2,8 @@ const { app, Tray, Menu, BrowserWindow, screen, nativeImage } = require('electro
 const path = require('path');
 const poller = require('./poller');
 
-// plane.html's flight animation runs ~5s; destroy the overlay shortly after.
-const FLIGHT_MS = 6000;
+// plane.html's flight animation runs ~10s; destroy the overlay shortly after.
+const FLIGHT_MS = 11000;
 
 let tray = null;
 let pollingPaused = false;
