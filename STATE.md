@@ -10,18 +10,21 @@ independent of JiraAlerts and Power Automate. Repo: github.com/godfreyponce/jira
 `~/Developer/docs/superpowers/specs/2026-07-23-jiraplane-design.md`.
 Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
-**Last updated: 2026-07-31**
+**Last updated: 2026-08-01**
 
 ## Now
 
-- **#2 ACCEPTED (2026-07-31):** live polling works — owner's self-assign test flew the
-  plane before the Teams message arrived. Ported extras: skips own-authored comments (so
-  self-comments can never fly — test the comment stream via a colleague's mention);
-  "reassigned away" stream deliberately NOT ported (issue #2 scope). Flood valve testable
-  with `MAX_EVENTS_PER_CYCLE=0 npm start`.
-- **Next: #3 (UI phase)** — owner greenlit: redesign plane like QuakPit + slower flight.
-  Flight slowed to 10s as a first guess (was 5s) — tune during #3. QuakPit technique notes
-  are a comment on issue #3. plane.html query contract now includes `type=digest`
+- **#3 design ACCEPTED (2026-08-01)** via interactive prototype: 3D folded-paper cream
+  glider (CSS polygons), sine-wave swoops with attitude tied to climb rate, tapered
+  speed-line air, panning whoosh (needs 1-line `autoplayPolicy` in main.js), rippling
+  manila banner (banner not prototyped — tune in impl). Spec:
+  `~/Developer/docs/superpowers/specs/2026-08-01-jiraplane-ui-redesign-design.md` +
+  accepted prototype HTML next to it. **Next: implementation plan (writing-plans), then
+  swap plane.html.**
+- **#2 ACCEPTED (2026-07-31):** live polling works. Skips own-authored comments (test the
+  comment stream via a colleague's mention); "reassigned away" stream deliberately NOT
+  ported. Flood valve testable with `MAX_EVENTS_PER_CYCLE=0 npm start`. QuakPit technique
+  notes are a comment on issue #3. plane.html query contract includes `type=digest`
   (banner = snippet only).
 - **#1 accepted & committed** (tray + overlay queue + plane.html). `TEST_FLIGHT=1 npm start`
   fires a flight on launch.
