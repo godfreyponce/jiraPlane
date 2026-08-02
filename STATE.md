@@ -15,7 +15,9 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 ## Now
 
 - **#6 BUILT — awaiting owner acceptance (2026-08-02):** continuous flight across
-  all displays (commit 778ee9d): one overlay per display rendering a slice of one
+  all displays (commits 778ee9d, 9438763 — the latter widens the exit margin to
+  400px so the towed tag fully clears the screen before teardown; owner caught the
+  banner vanishing 2/5 on-screen): one overlay per display rendering a slice of one
   global path, synced via shared wall-clock start + `--sync-delay`; speed fixed at
   the accepted ~175px/s so duration scales with span. Root cause of the cut-short
   flight: overlay sized to primary + `setVisibleOnAllWorkspaces(true)` relocation
