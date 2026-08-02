@@ -14,15 +14,14 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
-- **#4 DESIGN ACCEPTED — port next (2026-08-02):** winner is
-  `design-directions/3c4-cargo-tag-pendulum.html` (local only, git-excluded) —
-  cargo tag on a rigid-rope pendulum sim (gravity + air drag + distance constraint,
-  rope drawn per-frame between real anchor + grommet, weathervane ±6° clamp).
-  Slider values accepted at defaults: **weight 670, drag 5.0, rope 64**. Full
-  round-2 outcome is a comment on #4. **Next session: port 3c4 into `plane.html`**
-  (includes the rAF sim — plane.html already runs JS) + apply #3 cleanup notes,
-  then close #4 on owner acceptance. Skywriter kept as future option → issue #5
-  (blocked on #4).
+- **#4 PORTED — awaiting owner acceptance (2026-08-02):** 3c4 cargo-tag pendulum
+  banner is in `plane.html` (commit 94854a1): rigid-rope sim with accepted feel
+  (weight 670, drag 5.0, rope 64), old manila-note banner + ripple filter removed,
+  #3 cleanup notes applied (stale 'Task 2' comment gone; s1/s3 speed-line ~73%
+  scale kept, marked deliberate in a comment). Verified in Chrome via localhost —
+  tag, rope, and weathervane behave like the prototype. **Owner: run a test flight
+  (`TEST_FLIGHT=1 npm start` or tray → Test flight); on acceptance close #4.**
+  Skywriter kept as future option → issue #5 (blocked on #4).
 - **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (commits 2bd8dec, 9b63399,
   33e7200): 3D folded glider, sine glide, speed-lines, rippling manila banner, panning
   whoosh. `main.js` webPreferences now carries `autoplayPolicy: 'no-user-gesture-required'`
