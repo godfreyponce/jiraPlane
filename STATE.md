@@ -10,19 +10,18 @@ independent of JiraAlerts and Power Automate. Repo: github.com/godfreyponce/jira
 `~/Developer/docs/superpowers/specs/2026-07-23-jiraplane-design.md`.
 Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
-**Last updated: 2026-08-01**
+**Last updated: 2026-08-02**
 
 ## Now
 
-- **#3 design ACCEPTED (2026-08-01)** via interactive prototype: 3D folded-paper cream
-  glider (CSS polygons), sine-wave swoops with attitude tied to climb rate, tapered
-  speed-line air, panning whoosh (needs 1-line `autoplayPolicy` in main.js), rippling
-  manila banner (banner not prototyped — tune in impl). Spec:
-  `~/Developer/docs/superpowers/specs/2026-08-01-jiraplane-ui-redesign-design.md` +
-  accepted prototype HTML next to it. **Next: execute the committed plan
-  `~/Developer/docs/superpowers/plans/2026-08-01-jiraplane-ui-redesign.md` via
-  superpowers:subagent-driven-development (owner chose subagent mode, fresh session).
-  Plan is self-contained — 4 tasks, owner-acceptance gate before closing #3.**
+- **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (commits 2bd8dec, 9b63399,
+  33e7200): 3D folded glider, sine glide, speed-lines, rippling manila banner, panning
+  whoosh. `main.js` webPreferences now carries `autoplayPolicy: 'no-user-gesture-required'`
+  (overlay audio autoplay). Spec + accepted prototype:
+  `~/Developer/docs/superpowers/specs/2026-08-01-jiraplane-ui-redesign-*`.
+  **Next: #4 — explore divergent HTML banner variants (owner green-lit 2026-08-02);
+  banner only, glider/flight/whoosh stay as accepted. Cleanup notes from #3's final
+  review are in issue #4.**
 - **#2 ACCEPTED (2026-07-31):** live polling works. Skips own-authored comments (test the
   comment stream via a colleague's mention); "reassigned away" stream deliberately NOT
   ported. Flood valve testable with `MAX_EVENTS_PER_CYCLE=0 npm start`. QuakPit technique
