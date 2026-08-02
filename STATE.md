@@ -14,15 +14,15 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
-- **#4 IN PROGRESS — round 2 built, awaiting owner reaction (2026-08-02):** four
-  field-note variants in `design-directions/` (local only, git-excluded):
-  **3a-steadicam** (text gimbal-locked, rope/tape/shadow move), **3b-breather**
-  (sway axis swapped to toward-camera breathe, baselines level), **3c-cargo-tag**
-  (thick manila tag + grommet, hangs straight by weight), **3d-flyby** (whole rig
-  swells toward camera, readable hold mid-screen — deliberately scales the accepted
-  glider too). View: `open design-directions/3*.html`. Skywriter kept as future
-  option → issue #5 (blocked on #4). Reactions go as a comment on #4; port winner +
-  #3 cleanup notes when accepted.
+- **#4 IN PROGRESS — owner leaning 3C cargo tag (2026-08-02):** round-2 variants in
+  `design-directions/` (local only, git-excluded): 3a-steadicam, 3b-breather,
+  3c-cargo-tag, 3d-flyby. Owner likes **3C** but found its animation unrealistic
+  (tag bobbed independently, in lockstep with the glider) → built
+  **3c2-cargo-tag-towed**: towed-mass physics — tag lags the swoop 90° out of phase,
+  rope angle works in sync, ±2° inertia pitch, slow rope-twist; independent bob
+  removed. View: `open design-directions/3c2-cargo-tag-towed.html`. Skywriter kept
+  as future option → issue #5 (blocked on #4). Final reaction goes as a comment on
+  #4; port winner + #3 cleanup notes when accepted.
 - **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (commits 2bd8dec, 9b63399,
   33e7200): 3D folded glider, sine glide, speed-lines, rippling manila banner, panning
   whoosh. `main.js` webPreferences now carries `autoplayPolicy: 'no-user-gesture-required'`
