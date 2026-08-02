@@ -4,7 +4,12 @@
   jiraPlane overlay — ALL visuals live in this one self-contained file.
   Event data arrives via query string: ?type=assigned|mention|comment|digest&issueKey=...&snippet=...
   (digest has no label — the banner is just the snippet, e.g. "7 Jira updates")
-  The flight runs --fly-duration (10s); main.js destroys the window at 11s (FLIGHT_MS).
+  Multi-display (#6): main.js opens one of these windows per display and adds
+  start (shared wall-clock ms), dur (ms), minX/maxX/flyY (global desktop px)
+  and audio (leftmost window only); each window renders its slice of one
+  continuous flight. Without those params it's a single-screen 10s flight
+  (standalone browser previews). main.js destroys the windows 1s after the
+  animation ends.
   Design: B2 paper glider — spec 2026-08-01-jiraplane-ui-redesign-design.md.
   Banner: cargo tag towed on a rigid-rope pendulum sim, accepted in #4
   (weight 670, drag 5.0, rope 64). Accepted values come from the spec prototype
@@ -22,16 +27,20 @@
   }
 
   /* Flight rig: move (x, one-shot) > swoop (sine y) > bank (3D attitude, plane only).
-     Banner rides on swoop, NOT bank, so it stays level and readable. */
+     Banner rides on swoop, NOT bank, so it stays level and readable.
+     All animations start paused with a --sync-delay phase shift; body.fly
+     launches them at the shared start instant so per-display windows agree. */
   .move {
     position: fixed;
-    top: 32vh;
+    top: 32vh;             /* multi-display flights override per-frame from flyY */
     left: 0;
-    animation: move var(--fly-duration) linear forwards;
+    animation: move var(--fly-duration) linear var(--sync-delay, 0s) both;
+    animation-play-state: paused;
   }
+  body.fly .move { animation-play-state: running; }
   @keyframes move {
-    from { transform: translateX(-110%); }
-    to   { transform: translateX(calc(100vw + 40px)); }
+    from { transform: translateX(var(--sx, -194px)); }
+    to   { transform: translateX(var(--ex, calc(100vw + 40px))); }
   }
 
   .swoop {
@@ -39,8 +48,10 @@
     align-items: center;
     gap: 6px;
     perspective: 900px;
-    animation: swoop calc(var(--fly-duration) / 2) linear infinite;
+    animation: swoop calc(var(--fly-duration) / 2) linear var(--sync-delay, 0s) infinite;
+    animation-play-state: paused;
   }
+  body.fly .swoop { animation-play-state: running; }
   /* True sine, sampled every 5%, played linear: y = 44px * cos(2*pi*p) */
   @keyframes swoop {
     0%   { transform: translateY(44px); }
@@ -70,8 +81,10 @@
      rotateZ = -14deg*sin(2*pi*p), rotateX = 5deg + 16deg*sin, rotateY = -10deg*sin */
   .bank {
     transform-style: preserve-3d;
-    animation: bank calc(var(--fly-duration) / 2) linear infinite;
+    animation: bank calc(var(--fly-duration) / 2) linear var(--sync-delay, 0s) infinite;
+    animation-play-state: paused;
   }
+  body.fly .bank { animation-play-state: running; }
   @keyframes bank {
     0%   { transform: rotateZ(0deg)     rotateX(5deg)    rotateY(0deg); }
     5%   { transform: rotateZ(-4.3deg)  rotateX(9.9deg)  rotateY(-3.1deg); }
@@ -120,16 +133,18 @@
     transform-origin: right center;
     opacity: 0;
     animation: streak .8s linear infinite;
+    animation-play-state: paused;
     overflow: visible;
   }
+  body.fly .streak { animation-play-state: running; }
   /* standalone rotate: composes with the animated transform (transform: rotate() would be overwritten)
      s1/s3 viewBoxes are wider than their width attrs, so those streaks render
      ~73% scale — deliberate, this is the accepted look (#4 cleanup note) */
-  .streak.s1 { left: -120px; top: 10px; animation-delay: 0s;   rotate: -3deg; }
-  .streak.s2 { left: -100px; top: 30px; animation-delay: .3s;  animation-duration: .95s; }
-  .streak.s3 { left: -105px; top: 46px; animation-delay: .55s; animation-duration: .75s; rotate: 2deg; }
-  .streak.s4 { left: -78px;  top: 62px; animation-delay: .15s; animation-duration: .7s;  rotate: 4deg; }
-  .streak.s5 { left: -120px; top: 72px; animation-delay: .45s; animation-duration: .9s;  rotate: -2deg; }
+  .streak.s1 { left: -120px; top: 10px; animation-delay: var(--sync-delay, 0s); rotate: -3deg; }
+  .streak.s2 { left: -100px; top: 30px; animation-delay: calc(.3s + var(--sync-delay, 0s));  animation-duration: .95s; }
+  .streak.s3 { left: -105px; top: 46px; animation-delay: calc(.55s + var(--sync-delay, 0s)); animation-duration: .75s; rotate: 2deg; }
+  .streak.s4 { left: -78px;  top: 62px; animation-delay: calc(.15s + var(--sync-delay, 0s)); animation-duration: .7s;  rotate: 4deg; }
+  .streak.s5 { left: -120px; top: 72px; animation-delay: calc(.45s + var(--sync-delay, 0s)); animation-duration: .9s;  rotate: -2deg; }
   @keyframes streak {
     0%   { opacity: 0;  transform: translateX(20px) scaleX(.3); }
     18%  { opacity: 1; }
@@ -144,18 +159,22 @@
   /* Cargo-tag banner: tag + rope live OUTSIDE the flight rig, driven per-frame
      by the pendulum simulation. Rope endpoints are the real anchor + grommet. */
   #ropesvg { position: fixed; inset: 0; width: 100%; height: 100%;
-             pointer-events: none; }
+             pointer-events: none; visibility: hidden; }
+  body.fly #ropesvg, body.fly #tag { visibility: visible; }
   #ropesvg path { fill: none; stroke: rgba(240,240,230,.7); stroke-width: 2.5;
                   stroke-linecap: round; }
   #tag { position: fixed; left: 0; top: 0; pointer-events: none;
+         visibility: hidden;
          perspective: 800px;
          filter: drop-shadow(10px 14px 16px rgba(0,0,0,.45));
          transform-origin: calc(100% - 16px) 50%; /* pivot at the grommet */
          will-change: transform; }
   .slab {
     position: relative; transform-style: preserve-3d;
-    animation: twist 7.5s ease-in-out infinite alternate;
+    animation: twist 7.5s ease-in-out var(--sync-delay, 0s) infinite alternate;
+    animation-play-state: paused;
   }
+  body.fly .slab { animation-play-state: running; }
   @keyframes twist { /* slow twist on the rope; edge catches the light */
     from { transform: rotateX(5deg) rotateY(-11deg); }
     to   { transform: rotateX(5deg) rotateY(-21deg); }
@@ -243,38 +262,65 @@
     const parts = [label, issueKey && snippet ? issueKey + ': ' + snippet : issueKey || snippet];
     document.getElementById('banner').textContent = parts.filter(Boolean).join(' — ');
 
+    // Multi-display flight (#6): main.js passes a shared wall-clock start plus
+    // the global span; this window renders its slice, mapping desktop coords
+    // to local via window.screenX/screenY. Standalone (no params): fly now.
+    const moveEl = document.querySelector('.move');
+    const startAt = +params.get('start') || Date.now();
+    const flyY = params.has('flyY') ? +params.get('flyY') : null;
+    if (params.has('dur')) {
+      document.documentElement.style.setProperty(
+        '--fly-duration', +params.get('dur') / 1000 + 's');
+    }
+    function launch() {
+      const root = document.documentElement.style;
+      if (params.has('minX')) {
+        // same margins as the single-screen keyframes: -110% entry, +40px exit
+        root.setProperty('--sx',
+          +params.get('minX') - 1.1 * moveEl.offsetWidth - window.screenX + 'px');
+        root.setProperty('--ex', +params.get('maxX') + 40 - window.screenX + 'px');
+      }
+      root.setProperty('--sync-delay', startAt - Date.now() + 'ms');
+      document.body.classList.add('fly');
+      if (params.get('audio') !== '0') startAudio();
+    }
+    setTimeout(launch, Math.max(0, startAt - Date.now()));
+
     // Airy whoosh: noise -> bandpass -> gain envelope -> stereo pan across the room.
-    // Entirely optional: any failure is swallowed so audio can never break the visual.
-    try {
-      const durS = parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--fly-duration')
-      ) || 10;
-      const ctx = new AudioContext();
-      const buf = ctx.createBuffer(1, 2 * ctx.sampleRate, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.loop = true;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.Q.value = 0.6;
-      const gain = ctx.createGain();
-      gain.gain.value = 0;
-      const pan = new StereoPannerNode(ctx);
-      src.connect(bp); bp.connect(gain); gain.connect(pan); pan.connect(ctx.destination);
-      const t = ctx.currentTime;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.28, t + 0.39 * durS);
-      gain.gain.linearRampToValueAtTime(0.18, t + 0.67 * durS);
-      gain.gain.linearRampToValueAtTime(0, t + 0.96 * durS);
-      pan.pan.setValueAtTime(-0.9, t);
-      pan.pan.linearRampToValueAtTime(0.9, t + durS);
-      bp.frequency.setValueAtTime(420, t);
-      bp.frequency.linearRampToValueAtTime(750, t + 0.5 * durS);
-      bp.frequency.linearRampToValueAtTime(380, t + durS);
-      src.start();
-    } catch (e) { /* silence is fine */ }
+    // Entirely optional: any failure is swallowed so audio can never break the
+    // visual. Multi-display flights play it in the leftmost window only.
+    function startAudio() {
+      try {
+        const durS = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--fly-duration')
+        ) || 10;
+        const ctx = new AudioContext();
+        const buf = ctx.createBuffer(1, 2 * ctx.sampleRate, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.Q.value = 0.6;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        const pan = new StereoPannerNode(ctx);
+        src.connect(bp); bp.connect(gain); gain.connect(pan); pan.connect(ctx.destination);
+        const t = ctx.currentTime;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.28, t + 0.39 * durS);
+        gain.gain.linearRampToValueAtTime(0.18, t + 0.67 * durS);
+        gain.gain.linearRampToValueAtTime(0, t + 0.96 * durS);
+        pan.pan.setValueAtTime(-0.9, t);
+        pan.pan.linearRampToValueAtTime(0.9, t + durS);
+        bp.frequency.setValueAtTime(420, t);
+        bp.frequency.linearRampToValueAtTime(750, t + 0.5 * durS);
+        bp.frequency.linearRampToValueAtTime(380, t + durS);
+        src.start();
+      } catch (e) { /* silence is fine */ }
+    }
 
     /* ===== cargo-tag pendulum (accepted in #4) =====
        The grommet is a mass under gravity + air drag, tied to the tow anchor
@@ -292,6 +338,10 @@
 
     function frame(now) {
       const dt = Math.min((now - last) / 1000, .032); last = now;
+      // multi-display: hold the flight line at global flyY every frame — macOS
+      // nudges overlay windows below the menu bar by differing per-display
+      // amounts, so a static top would misalign the slices at the seam
+      if (flyY !== null) moveEl.style.top = flyY - window.screenY + 'px';
       const a  = anchorEl.getBoundingClientRect();
       const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
 
