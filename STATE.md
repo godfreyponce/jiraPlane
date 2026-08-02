@@ -14,6 +14,13 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
+- **#6 BUILT — awaiting owner acceptance (2026-08-02):** continuous flight across
+  all displays (commit 778ee9d): one overlay per display rendering a slice of one
+  global path, synced via shared wall-clock start + `--sync-delay`; speed fixed at
+  the accepted ~175px/s so duration scales with span. Root cause of the cut-short
+  flight: overlay sized to primary + `setVisibleOnAllWorkspaces(true)` relocation
+  (see gotcha below). Verify: `TEST_FLIGHT=1 npm start` with the external attached —
+  plane should take off on the left screen and exit the right screen's far edge.
 - **#4 PORTED — awaiting owner acceptance (2026-08-02):** 3c4 cargo-tag pendulum
   banner is in `plane.html` (commit 94854a1): rigid-rope sim with accepted feel
   (weight 670, drag 5.0, rope 64), old manila-note banner + ripple filter removed,
@@ -50,5 +57,9 @@ npm start        # menu-bar icon appears; "Test flight" fires a fake plane
   it to re-trigger the silent seed.
 - All visuals must stay in the single self-contained `plane.html` — the UI phase swaps that
   one file, nothing else.
-- Overlay windows need `'screen-saver'` level + `setVisibleOnAllWorkspaces(..., {visibleOnFullScreen: true})`
-  or the plane won't appear over full-screen apps.
+- Overlay windows need `'screen-saver'` level + `setVisibleOnAllWorkspaces(false, {visibleOnFullScreen: true})`
+  or the plane won't appear over full-screen apps. The first arg MUST be `false`:
+  `true` (canJoinAllSpaces) makes macOS drag the window to the focused display —
+  that's what cut flights short on the external monitor (#6). macOS also nudges
+  overlays below the menu bar by per-display amounts; plane.html re-pins the
+  flight line from `flyY` each frame to compensate.
