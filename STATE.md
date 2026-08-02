@@ -23,28 +23,20 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
   flight: overlay sized to primary + `setVisibleOnAllWorkspaces(true)` relocation
   (see gotcha below). Verify: `TEST_FLIGHT=1 npm start` with the external attached —
   plane should take off on the left screen and exit the right screen's far edge.
-- **#4 PORTED — awaiting owner acceptance (2026-08-02):** 3c4 cargo-tag pendulum
-  banner is in `plane.html` (commit 94854a1): rigid-rope sim with accepted feel
-  (weight 670, drag 5.0, rope 64), old manila-note banner + ripple filter removed,
-  #3 cleanup notes applied (stale 'Task 2' comment gone; s1/s3 speed-line ~73%
-  scale kept, marked deliberate in a comment). Verified in Chrome via localhost —
-  tag, rope, and weathervane behave like the prototype. **Owner: run a test flight
-  (`TEST_FLIGHT=1 npm start` or tray → Test flight); on acceptance close #4.**
-  Skywriter kept as future option → issue #5 (blocked on #4).
-- **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (commits 2bd8dec, 9b63399,
-  33e7200): 3D folded glider, sine glide, speed-lines, rippling manila banner, panning
-  whoosh. `main.js` webPreferences now carries `autoplayPolicy: 'no-user-gesture-required'`
+- **#4 ACCEPTED & CLOSED (2026-08-02):** cargo-tag pendulum banner in `plane.html`
+  (commit 94854a1): rigid-rope sim with accepted feel (weight 670, drag 5.0, rope 64);
+  old manila banner + ripple filter removed. Skywriter option → issue #5 (now unblocked).
+- **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (2bd8dec, 9b63399,
+  33e7200). `main.js` webPreferences carries `autoplayPolicy: 'no-user-gesture-required'`
   (overlay audio autoplay). Spec + accepted prototype:
   `~/Developer/docs/superpowers/specs/2026-08-01-jiraplane-ui-redesign-*`.
-- **#2 ACCEPTED (2026-07-31):** live polling works. Skips own-authored comments (test the
-  comment stream via a colleague's mention); "reassigned away" stream deliberately NOT
-  ported. Flood valve testable with `MAX_EVENTS_PER_CYCLE=0 npm start`. QuakPit technique
-  notes are a comment on issue #3. plane.html query contract includes `type=digest`
-  (banner = snippet only).
+- **#2 ACCEPTED (2026-07-31):** live polling works. Skips own-authored comments;
+  "reassigned away" stream deliberately NOT ported. Flood valve testable with
+  `MAX_EVENTS_PER_CYCLE=0 npm start`. plane.html query contract includes `type=digest`.
 - **#1 accepted & committed** (tray + overlay queue + plane.html). `TEST_FLIGHT=1 npm start`
   fires a flight on launch.
 
-## Run / verify (once #1 lands)
+## Run / verify
 
 ```bash
 npm install
