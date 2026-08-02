@@ -6,7 +6,9 @@
   (digest has no label — the banner is just the snippet, e.g. "7 Jira updates")
   The flight runs --fly-duration (10s); main.js destroys the window at 11s (FLIGHT_MS).
   Design: B2 paper glider — spec 2026-08-01-jiraplane-ui-redesign-design.md.
-  Accepted values come from the prototype HTML next to the spec; don't re-derive them.
+  Banner: cargo tag towed on a rigid-rope pendulum sim, accepted in #4
+  (weight 670, drag 5.0, rope 64). Accepted values come from the spec prototype
+  and the #4 round-2 comment; don't re-derive them.
 -->
 <head>
 <meta charset="utf-8">
@@ -120,7 +122,9 @@
     animation: streak .8s linear infinite;
     overflow: visible;
   }
-  /* standalone rotate: composes with the animated transform (transform: rotate() would be overwritten) */
+  /* standalone rotate: composes with the animated transform (transform: rotate() would be overwritten)
+     s1/s3 viewBoxes are wider than their width attrs, so those streaks render
+     ~73% scale — deliberate, this is the accepted look (#4 cleanup note) */
   .streak.s1 { left: -120px; top: 10px; animation-delay: 0s;   rotate: -3deg; }
   .streak.s2 { left: -100px; top: 30px; animation-delay: .3s;  animation-duration: .95s; }
   .streak.s3 { left: -105px; top: 46px; animation-delay: .55s; animation-duration: .75s; rotate: 2deg; }
@@ -133,40 +137,77 @@
     100% { opacity: 0;  transform: translateX(-60px) scaleX(1.4); }
   }
 
-  /* Manila paper banner, towed behind the plane (Task 2 adds the cloth ripple) */
-  .banner {
-    background: #f5efdd;
-    border: 3px solid #2d2440;
-    border-radius: 6px;
-    padding: 8px 18px;
-    font: 600 17px -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #2d2440;
-    white-space: nowrap;
-    filter: url(#banner-wave);
-    transform: skewX(-7deg);
+  /* Tow anchor: invisible marker at the glider's tail; JS reads its real
+     screen position every frame (it rides move + swoop + bank) */
+  .anchor { position: absolute; left: -2px; top: 45px; width: 2px; height: 2px; }
+
+  /* Cargo-tag banner: tag + rope live OUTSIDE the flight rig, driven per-frame
+     by the pendulum simulation. Rope endpoints are the real anchor + grommet. */
+  #ropesvg { position: fixed; inset: 0; width: 100%; height: 100%;
+             pointer-events: none; }
+  #ropesvg path { fill: none; stroke: rgba(240,240,230,.7); stroke-width: 2.5;
+                  stroke-linecap: round; }
+  #tag { position: fixed; left: 0; top: 0; pointer-events: none;
+         perspective: 800px;
+         filter: drop-shadow(10px 14px 16px rgba(0,0,0,.45));
+         transform-origin: calc(100% - 16px) 50%; /* pivot at the grommet */
+         will-change: transform; }
+  .slab {
+    position: relative; transform-style: preserve-3d;
+    animation: twist 7.5s ease-in-out infinite alternate;
   }
-  .banner span { display: inline-block; transform: skewX(7deg); }
-  .rope { width: 26px; height: 2px; background: #2d2440; }
+  @keyframes twist { /* slow twist on the rope; edge catches the light */
+    from { transform: rotateX(5deg) rotateY(-11deg); }
+    to   { transform: rotateX(5deg) rotateY(-21deg); }
+  }
+  .tagshape {
+    clip-path: polygon(0% 0%, calc(100% - 22px) 0%, 100% 50%,
+                       calc(100% - 22px) 100%, 0% 100%);
+  }
+  .ply { position: absolute; inset: 0; }
+  .ply.p1 { transform: translateZ(-5px);  background: #cbba8e; }
+  .ply.p2 { transform: translateZ(-10px); background: #ab9a72; }
+  .paper {
+    position: relative;
+    max-width: 260px;
+    padding: 12px 36px 14px 16px;
+    background-image:
+      repeating-linear-gradient(transparent 0 21px, rgba(140,120,80,.35) 21px 22px),
+      linear-gradient(105deg, #eddfb4, #e2d2a2 70%, #d6c592);
+    font: 400 16px/22px 'Marker Felt', 'Bradley Hand', 'Comic Sans MS', cursive;
+    color: #3a3226;
+    transform: translateZ(0);
+  }
+  .paper::after { /* metal grommet in the tag point */
+    content: ''; position: absolute; right: 9px; top: 50%; margin-top: -7px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%,
+      #2c3444 0 3.5px, #d8dbe0 3.5px 5.5px, #8b8d94 5.5px 7px);
+    box-shadow: 0 1px 1px rgba(0,0,0,.35);
+  }
 </style>
 </head>
 <body>
-  <svg width="0" height="0" style="position:absolute">
-    <filter id="banner-wave" x="-20%" y="-50%" width="140%" height="200%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.015 0.09" numOctaves="2" seed="7" result="noise"/>
-      <feDisplacementMap in="SourceGraphic" in2="noise" xChannelSelector="R" yChannelSelector="G" scale="7">
-        <animate attributeName="scale" values="5;9;5" dur="1.6s" repeatCount="indefinite"/>
-      </feDisplacementMap>
-    </filter>
-  </svg>
+  <svg id="ropesvg"><path id="rope"/></svg>
+
+  <div id="tag">
+    <div class="slab">
+      <div class="ply p2 tagshape"></div>
+      <div class="ply p1 tagshape"></div>
+      <div class="paper tagshape">
+        <span id="banner"></span>
+      </div>
+    </div>
+  </div>
+
   <div class="move">
     <div class="swoop">
-      <div class="banner"><span id="banner"></span></div>
-      <div class="rope"></div>
       <div class="bank">
         <div class="model">
           <div class="face wing far"></div>
           <div class="face wing near"></div>
           <div class="face keel"></div>
+          <div class="anchor" id="anchor"></div>
           <div class="air">
             <svg class="streak s1" width="110" height="10" viewBox="0 0 150 10">
               <path d="M150,2 C95,0.5 45,2 0,5 C45,6.5 95,8.8 150,8.2 Z" fill="rgba(236,241,255,.7)"/>
@@ -234,6 +275,70 @@
       bp.frequency.linearRampToValueAtTime(380, t + durS);
       src.start();
     } catch (e) { /* silence is fine */ }
+
+    /* ===== cargo-tag pendulum (accepted in #4) =====
+       The grommet is a mass under gravity + air drag, tied to the tow anchor
+       by a rigid-length rope: a distance constraint that stops stretch but
+       allows slack. Trail angle, pendulum swing on climbs/dives, and the
+       settle all emerge from the G/C balance. The tag also weathervanes —
+       its long axis aligns with its own apparent airflow (±6° clamp). */
+    const anchorEl = document.getElementById('anchor');
+    const tagEl    = document.getElementById('tag');
+    const ropeEl   = document.getElementById('rope');
+    const GROMMET_INSET = 16;      // grommet center from tag's right edge
+    const G = 670, C = 5, L = 64;  // accepted feel: gravity px/s², drag 1/s, rope px
+    let pos = null, vel = { x: 0, y: 0 }, pAnchor = null, pitch = 0;
+    let last = performance.now();
+
+    function frame(now) {
+      const dt = Math.min((now - last) / 1000, .032); last = now;
+      const a  = anchorEl.getBoundingClientRect();
+      const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+
+      // first frame (or a big stall teleported the anchor): reset the tag near it
+      if (!pos || !pAnchor || Math.hypot(ax - pAnchor.x, ay - pAnchor.y) > 250) {
+        pos = { x: ax - L * .7, y: ay + L * .7 };
+        vel.x = 0; vel.y = 0; pAnchor = { x: ax, y: ay };
+      }
+      const avx = (ax - pAnchor.x) / dt, avy = (ay - pAnchor.y) / dt;
+      pAnchor = { x: ax, y: ay };
+
+      // gravity + air drag (air is still in screen space)
+      vel.y += G * dt;
+      const f = Math.exp(-C * dt);
+      vel.x *= f; vel.y *= f;
+      pos.x += vel.x * dt; pos.y += vel.y * dt;
+
+      // rigid rope: clamp distance, kill outward radial velocity (rel. anchor)
+      let dx = pos.x - ax, dy = pos.y - ay, d = Math.hypot(dx, dy);
+      if (d > L) {
+        const ux = dx / d, uy = dy / d;
+        pos.x = ax + ux * L; pos.y = ay + uy * L;
+        const rad = (vel.x - avx) * ux + (vel.y - avy) * uy;
+        if (rad > 0) { vel.x -= rad * ux; vel.y -= rad * uy; }
+        d = L;
+      }
+
+      // rope: straight when taut, bows down when slack
+      const sag = Math.max(0, L - d) * .8 + 2;
+      const mx = (ax + pos.x) / 2, my = (ay + pos.y) / 2 + sag;
+      ropeEl.setAttribute('d', `M${ax},${ay} Q${mx},${my} ${pos.x},${pos.y}`);
+
+      // weathervane: tail aligns with apparent airflow (smoothed, clamped)
+      const speed = Math.hypot(vel.x, vel.y);
+      if (speed > 40) {
+        let t = (Math.atan2(-vel.y, -vel.x) - Math.PI) * 180 / Math.PI;
+        while (t > 180) t -= 360; while (t < -180) t += 360;
+        t = Math.max(-6, Math.min(6, t));
+        pitch += (t - pitch) * Math.min(1, 6 * dt);
+      }
+
+      const w = tagEl.offsetWidth, h = tagEl.offsetHeight;
+      tagEl.style.transform =
+        `translate(${pos.x - (w - GROMMET_INSET)}px, ${pos.y - h / 2}px) rotate(${pitch}deg)`;
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
   </script>
 </body>
 </html>
