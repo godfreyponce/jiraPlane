@@ -14,11 +14,12 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
-- **#4 IN PROGRESS (2026-08-02):** four divergent banner prototypes built in
-  `design-directions/` (local only, git-excluded): 1-pennant, 2-hud-chip, 3-field-note,
-  4-skywriter. View with `open design-directions/*.html`; each loops the accepted flight
-  and has payload buttons. **Awaiting owner reaction — then port the winner into
-  plane.html's banner block, folding in the #3 cleanup notes listed in issue #4.**
+- **#4 IN PROGRESS — round 2 next (2026-08-02):** round-1 prototypes live in
+  `design-directions/` (local only, git-excluded). Owner picked **3-field-note** but the
+  sway makes it hard to read (eye jitter); **next session: variants off the field note
+  only — fix readability, push more 3D magnitude/feeling.** Skywriter (4) is kept as a
+  future selectable option → issue #5 (banner style picker, unlabeled, blocked on #4).
+  Full reaction is a comment on #4; port winner + #3 cleanup notes when accepted.
 - **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (commits 2bd8dec, 9b63399,
   33e7200): 3D folded glider, sine glide, speed-lines, rippling manila banner, panning
   whoosh. `main.js` webPreferences now carries `autoplayPolicy: 'no-user-gesture-required'`
