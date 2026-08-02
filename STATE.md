@@ -14,14 +14,16 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
+- **#4 IN PROGRESS (2026-08-02):** four divergent banner prototypes built in
+  `design-directions/` (local only, git-excluded): 1-pennant, 2-hud-chip, 3-field-note,
+  4-skywriter. View with `open design-directions/*.html`; each loops the accepted flight
+  and has payload buttons. **Awaiting owner reaction — then port the winner into
+  plane.html's banner block, folding in the #3 cleanup notes listed in issue #4.**
 - **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (commits 2bd8dec, 9b63399,
   33e7200): 3D folded glider, sine glide, speed-lines, rippling manila banner, panning
   whoosh. `main.js` webPreferences now carries `autoplayPolicy: 'no-user-gesture-required'`
   (overlay audio autoplay). Spec + accepted prototype:
   `~/Developer/docs/superpowers/specs/2026-08-01-jiraplane-ui-redesign-*`.
-  **Next: #4 — explore divergent HTML banner variants (owner green-lit 2026-08-02);
-  banner only, glider/flight/whoosh stay as accepted. Cleanup notes from #3's final
-  review are in issue #4.**
 - **#2 ACCEPTED (2026-07-31):** live polling works. Skips own-authored comments (test the
   comment stream via a colleague's mention); "reassigned away" stream deliberately NOT
   ported. Flood valve testable with `MAX_EVENTS_PER_CYCLE=0 npm start`. QuakPit technique
