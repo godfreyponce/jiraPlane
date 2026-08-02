@@ -48,8 +48,9 @@ function createFlight(event) {
   // single-screen look.
   const flyY = Math.round(primary.bounds.y + primary.bounds.height * 0.32);
   // Entry/exit margins mirror plane.html's rig: ~194px offscreen entry
-  // (-110% of the ~176px rig), 40px exit.
-  const spanPx = maxX + 40 - (minX - 194);
+  // (-110% of the ~176px rig); 400px exit so the towed tag (rope 64px + tag
+  // ≤312px wide, pivoted 16px in) fully clears the screen before teardown.
+  const spanPx = maxX + 400 - (minX - 194);
   const durMs = Math.round((spanPx / SPEED_PX_S) * 1000);
   const start = Date.now() + START_LEAD_MS;
   const leftmost = displays.reduce((a, b) => (a.bounds.x <= b.bounds.x ? a : b));

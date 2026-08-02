@@ -40,7 +40,9 @@
   body.fly .move { animation-play-state: running; }
   @keyframes move {
     from { transform: translateX(var(--sx, -194px)); }
-    to   { transform: translateX(var(--ex, calc(100vw + 40px))); }
+    /* 400px exit: the towed tag trails the anchor by rope(64) + tag width, so
+       the whole banner clears the screen before the animation ends (#6) */
+    to   { transform: translateX(var(--ex, calc(100vw + 400px))); }
   }
 
   .swoop {
@@ -275,10 +277,10 @@
     function launch() {
       const root = document.documentElement.style;
       if (params.has('minX')) {
-        // same margins as the single-screen keyframes: -110% entry, +40px exit
+        // same margins as the single-screen keyframes: -110% entry, +400px exit
         root.setProperty('--sx',
           +params.get('minX') - 1.1 * moveEl.offsetWidth - window.screenX + 'px');
-        root.setProperty('--ex', +params.get('maxX') + 40 - window.screenX + 'px');
+        root.setProperty('--ex', +params.get('maxX') + 400 - window.screenX + 'px');
       }
       root.setProperty('--sync-delay', startAt - Date.now() + 'ms');
       document.body.classList.add('fly');
