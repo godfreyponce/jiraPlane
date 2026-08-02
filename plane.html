@@ -4,65 +4,177 @@
   jiraPlane overlay — ALL visuals live in this one self-contained file.
   Event data arrives via query string: ?type=assigned|mention|comment|digest&issueKey=...&snippet=...
   (digest has no label — the banner is just the snippet, e.g. "7 Jira updates")
-  The flight animation runs ~10s; main.js destroys the window at 11s (FLIGHT_MS).
+  The flight runs --fly-duration (10s); main.js destroys the window at 11s (FLIGHT_MS).
+  Design: B2 paper glider — spec 2026-08-01-jiraplane-ui-redesign-design.md.
+  Accepted values come from the prototype HTML next to the spec; don't re-derive them.
 -->
 <head>
 <meta charset="utf-8">
 <style>
+  :root { --fly-duration: 10s; }
   html, body {
     margin: 0;
     overflow: hidden;
     background: transparent;
     pointer-events: none; /* belt-and-suspenders with setIgnoreMouseEvents */
   }
-  .flight {
+
+  /* Flight rig: move (x, one-shot) > swoop (sine y) > bank (3D attitude, plane only).
+     Banner rides on swoop, NOT bank, so it stays level and readable. */
+  .move {
     position: fixed;
-    top: 30vh;
+    top: 32vh;
     left: 0;
-    animation: fly 10s linear forwards;
+    animation: move var(--fly-duration) linear forwards;
   }
-  @keyframes fly {
+  @keyframes move {
     from { transform: translateX(-110%); }
-    to   { transform: translateX(calc(100vw + 40px)); } /* clear the shadow too */
+    to   { transform: translateX(calc(100vw + 40px)); }
   }
-  .bob {
+
+  .swoop {
     display: flex;
     align-items: center;
     gap: 6px;
-    animation: bob 1.3s ease-in-out infinite alternate;
+    perspective: 900px;
+    animation: swoop calc(var(--fly-duration) / 2) linear infinite;
   }
-  @keyframes bob {
-    from { transform: translateY(-8px); }
-    to   { transform: translateY(8px); }
+  /* True sine, sampled every 5%, played linear: y = 44px * cos(2*pi*p) */
+  @keyframes swoop {
+    0%   { transform: translateY(44px); }
+    5%   { transform: translateY(41.8px); }
+    10%  { transform: translateY(35.6px); }
+    15%  { transform: translateY(25.9px); }
+    20%  { transform: translateY(13.6px); }
+    25%  { transform: translateY(0px); }
+    30%  { transform: translateY(-13.6px); }
+    35%  { transform: translateY(-25.9px); }
+    40%  { transform: translateY(-35.6px); }
+    45%  { transform: translateY(-41.8px); }
+    50%  { transform: translateY(-44px); }
+    55%  { transform: translateY(-41.8px); }
+    60%  { transform: translateY(-35.6px); }
+    65%  { transform: translateY(-25.9px); }
+    70%  { transform: translateY(-13.6px); }
+    75%  { transform: translateY(0px); }
+    80%  { transform: translateY(13.6px); }
+    85%  { transform: translateY(25.9px); }
+    90%  { transform: translateY(35.6px); }
+    95%  { transform: translateY(41.8px); }
+    100% { transform: translateY(44px); }
   }
+
+  /* Attitude proportional to climb/dive rate:
+     rotateZ = -14deg*sin(2*pi*p), rotateX = 5deg + 16deg*sin, rotateY = -10deg*sin */
+  .bank {
+    transform-style: preserve-3d;
+    animation: bank calc(var(--fly-duration) / 2) linear infinite;
+  }
+  @keyframes bank {
+    0%   { transform: rotateZ(0deg)     rotateX(5deg)    rotateY(0deg); }
+    5%   { transform: rotateZ(-4.3deg)  rotateX(9.9deg)  rotateY(-3.1deg); }
+    10%  { transform: rotateZ(-8.2deg)  rotateX(14.4deg) rotateY(-5.9deg); }
+    15%  { transform: rotateZ(-11.3deg) rotateX(17.9deg) rotateY(-8.1deg); }
+    20%  { transform: rotateZ(-13.3deg) rotateX(20.2deg) rotateY(-9.5deg); }
+    25%  { transform: rotateZ(-14deg)   rotateX(21deg)   rotateY(-10deg); }
+    30%  { transform: rotateZ(-13.3deg) rotateX(20.2deg) rotateY(-9.5deg); }
+    35%  { transform: rotateZ(-11.3deg) rotateX(17.9deg) rotateY(-8.1deg); }
+    40%  { transform: rotateZ(-8.2deg)  rotateX(14.4deg) rotateY(-5.9deg); }
+    45%  { transform: rotateZ(-4.3deg)  rotateX(9.9deg)  rotateY(-3.1deg); }
+    50%  { transform: rotateZ(0deg)     rotateX(5deg)    rotateY(0deg); }
+    55%  { transform: rotateZ(4.3deg)   rotateX(0.1deg)  rotateY(3.1deg); }
+    60%  { transform: rotateZ(8.2deg)   rotateX(-4.4deg) rotateY(5.9deg); }
+    65%  { transform: rotateZ(11.3deg)  rotateX(-7.9deg) rotateY(8.1deg); }
+    70%  { transform: rotateZ(13.3deg)  rotateX(-10.2deg) rotateY(9.5deg); }
+    75%  { transform: rotateZ(14deg)    rotateX(-11deg)  rotateY(10deg); }
+    80%  { transform: rotateZ(13.3deg)  rotateX(-10.2deg) rotateY(9.5deg); }
+    85%  { transform: rotateZ(11.3deg)  rotateX(-7.9deg) rotateY(8.1deg); }
+    90%  { transform: rotateZ(8.2deg)   rotateX(-4.4deg) rotateY(5.9deg); }
+    95%  { transform: rotateZ(4.3deg)   rotateX(0.1deg)  rotateY(3.1deg); }
+    100% { transform: rotateZ(0deg)     rotateX(5deg)    rotateY(0deg); }
+  }
+
+  /* B2 wide cream glider: 3 faces, spine (fold line) at y=52 in model space */
+  .model { position: relative; width: 170px; height: 80px; transform-style: preserve-3d; }
+  .face  { position: absolute; left: 0; width: 170px; }
+  .wing  {
+    top: -26px; height: 78px;
+    transform-origin: bottom;
+    clip-path: polygon(100% 100%, 0% 12%, 0% 100%);
+  }
+  .far  { background: #f5efdd; transform: rotateX(80deg); }
+  .near { background: #d8cdae; transform: rotateX(-80deg); }
+  .keel {
+    top: 51px; height: 18px;
+    background: #b3a683;
+    clip-path: polygon(100% 0%, 0% 0%, 30% 100%);
+  }
+
+  /* Air: tapered cartoon speed-lines shearing off the trailing edge.
+     They live inside .bank so the wake tilts with the plane. */
+  .air { position: absolute; top: 0; left: 0; }
+  .streak {
+    position: absolute;
+    transform-origin: right center;
+    opacity: 0;
+    animation: streak .8s linear infinite;
+    overflow: visible;
+  }
+  /* standalone rotate: composes with the animated transform (transform: rotate() would be overwritten) */
+  .streak.s1 { left: -120px; top: 10px; animation-delay: 0s;   rotate: -3deg; }
+  .streak.s2 { left: -100px; top: 30px; animation-delay: .3s;  animation-duration: .95s; }
+  .streak.s3 { left: -105px; top: 46px; animation-delay: .55s; animation-duration: .75s; rotate: 2deg; }
+  .streak.s4 { left: -78px;  top: 62px; animation-delay: .15s; animation-duration: .7s;  rotate: 4deg; }
+  .streak.s5 { left: -120px; top: 72px; animation-delay: .45s; animation-duration: .9s;  rotate: -2deg; }
+  @keyframes streak {
+    0%   { opacity: 0;  transform: translateX(20px) scaleX(.3); }
+    18%  { opacity: 1; }
+    55%  { opacity: .55; }
+    100% { opacity: 0;  transform: translateX(-60px) scaleX(1.4); }
+  }
+
+  /* Manila paper banner, towed behind the plane (Task 2 adds the cloth ripple) */
   .banner {
-    background: rgba(255, 255, 255, 0.95);
-    border: 2px solid #333;
-    border-radius: 999px;
+    background: #f5efdd;
+    border: 3px solid #2d2440;
+    border-radius: 6px;
     padding: 8px 18px;
     font: 600 17px -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #222;
+    color: #2d2440;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   }
-  .rope {
-    width: 28px;
-    height: 2px;
-    background: #333;
-  }
-  .plane {
-    font-size: 52px;
-    line-height: 1;
-    transform: rotate(45deg); /* ✈️ points NE; aim it along the flight path */
-  }
+  .rope { width: 26px; height: 2px; background: #2d2440; }
 </style>
 </head>
 <body>
-  <div class="flight">
-    <div class="bob">
-      <div class="banner" id="banner"></div>
+  <div class="move">
+    <div class="swoop">
+      <div class="banner"><span id="banner"></span></div>
       <div class="rope"></div>
-      <div class="plane">&#9992;&#65039;</div>
+      <div class="bank">
+        <div class="model">
+          <div class="face wing far"></div>
+          <div class="face wing near"></div>
+          <div class="face keel"></div>
+          <div class="air">
+            <svg class="streak s1" width="110" height="10" viewBox="0 0 150 10">
+              <path d="M150,2 C95,0.5 45,2 0,5 C45,6.5 95,8.8 150,8.2 Z" fill="rgba(236,241,255,.7)"/>
+            </svg>
+            <svg class="streak s2" width="90" height="8" viewBox="0 0 90 8">
+              <path d="M90,1.8 C58,0.6 28,1.6 0,4 C28,5.4 58,7 90,6.4 Z" fill="rgba(236,241,255,.38)"/>
+            </svg>
+            <svg class="streak s3" width="95" height="10" viewBox="0 0 130 10">
+              <path d="M130,2 C84,0.5 40,2 0,5 C40,6.5 84,8.8 130,8.2 Z" fill="rgba(236,241,255,.65)"/>
+            </svg>
+            <svg class="streak s4" width="68" height="6" viewBox="0 0 68 6">
+              <path d="M68,1.4 C44,0.5 20,1.2 0,3 C20,4.2 44,5.2 68,4.8 Z" fill="rgba(236,241,255,.32)"/>
+            </svg>
+            <svg class="streak s5" width="112" height="8" viewBox="0 0 112 8">
+              <path d="M112,1.6 C72,0.5 34,1.5 0,4 C34,5.6 72,7.2 112,6.6 Z" fill="rgba(236,241,255,.5)"/>
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <script>
