@@ -17,10 +17,14 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 - **#4 IN PROGRESS — owner leaning 3C cargo tag (2026-08-02):** round-2 variants in
   `design-directions/` (local only, git-excluded): 3a-steadicam, 3b-breather,
   3c-cargo-tag, 3d-flyby. Owner likes **3C** but found its animation unrealistic
-  (tag bobbed independently, in lockstep with the glider) → built
-  **3c2-cargo-tag-towed**: towed-mass physics — tag lags the swoop 90° out of phase,
-  rope angle works in sync, ±2° inertia pitch, slow rope-twist; independent bob
-  removed. View: `open design-directions/3c2-cargo-tag-towed.html`. Skywriter kept
+  (tag bobbed independently, in lockstep with the glider); 3c2's keyframed "lag"
+  still read the same + rope looked disconnected → built **3c3-cargo-tag-physics**:
+  tag is a JS-simulated towed mass (spring-damper follows a tow anchor on the
+  glider), rope drawn per-frame between the real anchor + grommet points (taut when
+  dragged, sags when slack), pitch falls out of the sim. Browser-verified: rope
+  stays connected, lag visible. View: `open design-directions/3c3-cargo-tag-physics.html`.
+  Note: v3 breaks the pure-CSS pattern — porting to plane.html means porting the
+  rAF sim too (plane.html already runs JS, so contract-compatible). Skywriter kept
   as future option → issue #5 (blocked on #4). Final reaction goes as a comment on
   #4; port winner + #3 cleanup notes when accepted.
 - **#3 ACCEPTED & CLOSED (2026-08-02):** B2 paper glider shipped (commits 2bd8dec, 9b63399,
