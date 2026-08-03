@@ -14,6 +14,10 @@
   Banner: cargo tag towed on a rigid-rope pendulum sim, accepted in #4
   (weight 670, drag 5.0, rope 64). Accepted values come from the spec prototype
   and the #4 round-2 comment; don't re-derive them.
+  Skywriter (#10): optional second style, ?banner=skywriter — smoke letters
+  written along the flight path (as-is port of design-directions round 1);
+  tag + rope hidden, pendulum sim skipped. main.js adds textX0/textX1
+  (global px text bounds). Default/unknown banner value = cargo.
 -->
 <head>
 <meta charset="utf-8">
@@ -206,6 +210,32 @@
       #2c3444 0 3.5px, #d8dbe0 3.5px 5.5px, #8b8d94 5.5px 7px);
     box-shadow: 0 1px 1px rgba(0,0,0,.35);
   }
+
+  /* Skywriter (#10): letters condense as smoke in world space at the moment
+     the plane's tail passes them, then drift up and dissipate. Per-puff
+     position, delay and duration are set inline by JS; duration is the
+     REMAINING flight time so nothing pops off mid-fade at teardown. */
+  body.skywriter #ropesvg, body.skywriter #tag { display: none; }
+  .puff {
+    position: fixed;
+    opacity: 0;
+    font: 800 24px 'Arial Rounded MT Bold', -apple-system, sans-serif;
+    color: #f2f6ff;
+    text-shadow: 0 0 10px rgba(240,246,255,.95),
+                 0 0 26px rgba(240,246,255,.55),
+                 0 0 44px rgba(240,246,255,.3);
+    animation: puff 10s linear both;
+    animation-play-state: paused;
+    will-change: transform, opacity, filter;
+  }
+  body.fly .puff { animation-play-state: running; }
+  @keyframes puff {
+    0%   { opacity: 0;   transform: scale(.4) translateY(6px);    filter: blur(8px); }
+    3%   { opacity: .95; transform: scale(1) translateY(0);       filter: blur(.5px); }
+    45%  { opacity: .55; transform: scale(1.12) translateY(-9px); filter: blur(2.5px); }
+    80%  { opacity: 0;   transform: scale(1.3) translateY(-20px); filter: blur(6px); }
+    100% { opacity: 0;   transform: scale(1.3) translateY(-20px); filter: blur(6px); }
+  }
 </style>
 </head>
 <body>
@@ -220,6 +250,8 @@
       </div>
     </div>
   </div>
+
+  <div id="sky"></div>
 
   <div class="move">
     <div class="swoop">
@@ -264,6 +296,10 @@
     const parts = [label, issueKey && snippet ? issueKey + ': ' + snippet : issueKey || snippet];
     document.getElementById('banner').textContent = parts.filter(Boolean).join(' — ');
 
+    // Banner style (#10): default and unknown values mean cargo.
+    const bannerStyle = params.get('banner') === 'skywriter' ? 'skywriter' : 'cargo';
+    if (bannerStyle === 'skywriter') document.body.classList.add('skywriter');
+
     // Multi-display flight (#6): main.js passes a shared wall-clock start plus
     // the global span; this window renders its slice, mapping desktop coords
     // to local via window.screenX/screenY. Standalone (no params): fly now.
@@ -283,6 +319,7 @@
         root.setProperty('--ex', +params.get('maxX') + 400 - window.screenX + 'px');
       }
       root.setProperty('--sync-delay', startAt - Date.now() + 'ms');
+      if (bannerStyle === 'skywriter') layoutSkywriter();
       document.body.classList.add('fly');
       if (params.get('audio') !== '0') startAudio();
     }
@@ -322,6 +359,44 @@
         bp.frequency.linearRampToValueAtTime(380, t + durS);
         src.start();
       } catch (e) { /* silence is fine */ }
+    }
+
+    /* ===== skywriter (#10, as-is port of design-directions round 1) =====
+       Each letter is a fixed-position puff laid down at the point — and the
+       moment — the plane's tail crosses its x. Multi-display: all coords are
+       computed in global desktop px, converted to this window's local px once
+       at launch; puffs outside the window simply clip. */
+    function layoutSkywriter() {
+      const text = document.getElementById('banner').textContent;
+      const sky = document.getElementById('sky');
+      const durS = params.has('dur') ? +params.get('dur') / 1000 : 10;
+      const multi = params.has('minX');
+      const ox = multi ? window.screenX : 0; // global → local offset
+      const oy = multi ? window.screenY : 0;
+      // Plane-tail x span, mirroring the move animation: -110% rig entry, +400px exit
+      const from = (multi ? +params.get('minX') : 0) - 1.1 * moveEl.offsetWidth;
+      const to = (multi ? +params.get('maxX') : innerWidth) + 400;
+      // Text bounds: 6%–88% of the primary display (multi) or the viewport (standalone)
+      const x0 = multi ? +params.get('textX0') : innerWidth * 0.06;
+      const x1 = multi ? +params.get('textX1') : innerWidth * 0.88;
+      const baseY = (multi ? +params.get('flyY') : innerHeight * 0.32) + 40;
+      const spacing = Math.min(26, (x1 - x0) / text.length);
+      [...text].forEach((c, i) => {
+        if (c === ' ') return; // spacing already reserves the slot
+        const x = x0 + i * spacing;
+        const t = ((x - from) / (to - from)) * durS; // moment the tail crosses x
+        const y = baseY + 44 * Math.cos((2 * Math.PI * t) / (durS / 2)); // swoop sine
+        const s = document.createElement('span');
+        s.className = 'puff';
+        s.textContent = c;
+        s.style.left = x - ox + 'px';
+        s.style.top = y - oy + 'px';
+        s.style.animationDelay = `calc(var(--sync-delay, 0s) + ${t}s)`;
+        // Compress the keyframe shape into the remaining flight time: early
+        // letters linger (prototype feel), late letters dissipate quicker.
+        s.style.animationDuration = durS - t + 's';
+        sky.appendChild(s);
+      });
     }
 
     /* ===== cargo-tag pendulum (accepted in #4) =====
@@ -390,7 +465,17 @@
         `translate(${pos.x - (w - GROMMET_INSET)}px, ${pos.y - h / 2}px) rotate(${pitch}deg)`;
       requestAnimationFrame(frame);
     }
-    requestAnimationFrame(frame);
+    if (bannerStyle === 'skywriter') {
+      // No pendulum, but the per-frame flyY re-pin still serves the plane itself:
+      // macOS nudges overlay windows below the menu bar by differing per-display
+      // amounts, and AeroSpace can shift frames mid-flight (#6).
+      (function repin() {
+        if (flyY !== null) moveEl.style.top = flyY - window.screenY + 'px';
+        requestAnimationFrame(repin);
+      })();
+    } else {
+      requestAnimationFrame(frame);
+    }
   </script>
 </body>
 </html>
