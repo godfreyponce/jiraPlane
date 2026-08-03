@@ -14,6 +14,8 @@ Google Calendar app — same energy, but for Jira.
   the screen and animates a plane across it with a banner (e.g.
   *"Assigned to you — PROJ-142: Fix login redirect"*), then the window disappears.
 - Dedup state, silent first-run seeding, and a flood valve keep it from spamming planes.
+- `settings.json` (gitignored) holds user prefs like the banner style — separate from
+  `state.json`, so resetting dedup state keeps your choice.
 
 ## Status
 

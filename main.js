@@ -1,5 +1,6 @@
 const { app, Tray, Menu, BrowserWindow, screen, nativeImage } = require('electron');
 const { execFile } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const poller = require('./poller');
 
@@ -12,6 +13,21 @@ const START_LEAD_MS = 700;
 
 let tray = null;
 let pollingPaused = false;
+
+// Banner style picker (#10): persisted user pref, separate from state.json so
+// resetting dedup state never loses the choice. Any read failure → cargo.
+const SETTINGS_PATH = path.join(__dirname, 'settings.json');
+let bannerStyle = 'cargo';
+try {
+  const saved = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')).bannerStyle;
+  if (saved === 'skywriter') bannerStyle = saved;
+} catch { /* missing or invalid settings.json: keep cargo */ }
+
+function setBannerStyle(style) {
+  bannerStyle = style;
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify({ bannerStyle }, null, 2) + '\n');
+  tray.setContextMenu(buildMenu());
+}
 
 const flightQueue = [];
 let activeFlight = null;
@@ -111,6 +127,12 @@ function createFlight(event) {
         maxX: String(maxX),
         flyY: String(flyY),
         audio: d.id === leftmost.id ? '1' : '0',
+        banner: bannerStyle,
+        // Skywriter text bounds (global px): 6%–88% of the primary display, the
+        // prototype's layout budget. main.js computes these because each overlay
+        // window only knows its own slice of the desktop.
+        textX0: String(Math.round(primary.bounds.x + primary.bounds.width * 0.06)),
+        textX1: String(Math.round(primary.bounds.x + primary.bounds.width * 0.88)),
       },
     });
     win.once('ready-to-show', () => {
@@ -160,6 +182,15 @@ function testFlight() {
 function buildMenu() {
   return Menu.buildFromTemplate([
     { label: 'Test flight', click: testFlight },
+    {
+      label: 'Banner style',
+      submenu: [
+        { label: 'Cargo tag', type: 'radio', checked: bannerStyle === 'cargo',
+          click: () => setBannerStyle('cargo') },
+        { label: 'Skywriter', type: 'radio', checked: bannerStyle === 'skywriter',
+          click: () => setBannerStyle('skywriter') },
+      ],
+    },
     { type: 'separator' },
     {
       label: pollingPaused ? 'Resume polling' : 'Pause polling',
