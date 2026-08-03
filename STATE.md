@@ -14,14 +14,14 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
-- **#6 ACCEPTANCE FAILED for tray-triggered flights (2026-08-03):** launch-time
-  `TEST_FLIGHT=1` crossed end to end, but tray → Test flight stays on whichever
-  display's menu bar was clicked (main-click → never reaches external;
-  external-click → never starts on main). Hypothesis on the issue: macOS relocates
-  the overlays to the focused display when created from the tray menu handler —
-  same family as the original `setVisibleOnAllWorkspaces` gotcha. Next: instrument
-  `win.getBounds()` after `showInactive()` to confirm, then defer creation past
-  menu close / re-pin bounds. Full test log + code read: issue #6 comment.
+- **#6 ROOT CAUSE FOUND + FIX BUILT (2026-08-03), awaiting owner re-test:** the
+  yank was **AeroSpace** (owner's tiling WM), not the tray path — it adopts each
+  overlay onto the FOCUSED monitor's workspace and snaps it back on every
+  setBounds. Fix: `releaseFromTilingWM()` in main.js asks the aerospace CLI to
+  move each overlay's node to its own monitor; AeroSpace then restores the frame
+  itself. Verified via bounds logs (both overlays stable on own monitors).
+  Owner test: tray → Test flight clicked on BOTH displays, flight crosses
+  end to end. Full investigation log: issue #6 comments.
 - **#4 ACCEPTED & CLOSED (2026-08-02):** cargo-tag pendulum banner in `plane.html`
   (commit 94854a1): rigid-rope sim with accepted feel (weight 670, drag 5.0, rope 64);
   old manila banner + ripple filter removed. Skywriter option → issue #5 (now unblocked).
@@ -51,8 +51,10 @@ npm start        # menu-bar icon appears; "Test flight" fires a fake plane
 - All visuals must stay in the single self-contained `plane.html` — the UI phase swaps that
   one file, nothing else.
 - Overlay windows need `'screen-saver'` level + `setVisibleOnAllWorkspaces(false, {visibleOnFullScreen: true})`
-  or the plane won't appear over full-screen apps. The first arg MUST be `false`:
-  `true` (canJoinAllSpaces) makes macOS drag the window to the focused display —
-  that's what cut flights short on the external monitor (#6). macOS also nudges
-  overlays below the menu bar by per-display amounts; plane.html re-pins the
-  flight line from `flyY` each frame to compensate.
+  or the plane won't appear over full-screen apps. (The old "canJoinAllSpaces
+  drags windows" diagnosis was WRONG — the dragger was AeroSpace all along, #6.)
+- **AeroSpace** moves every new window to the focused monitor and fights any
+  setBounds; no window style escapes its 0.21.3 heuristics (AXCloseButton exists
+  even with `closable:false`). Overlays must call `releaseFromTilingWM()` after
+  show. `enableLargerThanScreen: true` kills the separate macOS menu-bar-nudge
+  constraint; plane.html's per-frame `flyY` re-pin still covers residual y offsets.

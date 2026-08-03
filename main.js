@@ -1,4 +1,5 @@
 const { app, Tray, Menu, BrowserWindow, screen, nativeImage } = require('electron');
+const { execFile } = require('child_process');
 const path = require('path');
 const poller = require('./poller');
 
@@ -36,6 +37,25 @@ function flyNext() {
   );
 }
 
+// AeroSpace (tiling WM, #6): on detection it assigns every new window to the
+// FOCUSED monitor's workspace and snaps the frame there — no window style
+// escapes its heuristics, and app-side setBounds just gets snapped back.
+// The one working recipe: move the window's node to its own monitor via the
+// aerospace CLI; AeroSpace then restores the frame to where we put it.
+// 'main'/'secondary' covers 1–2 monitor setups. No-op if AeroSpace is absent.
+let aerospaceMissing = false;
+function releaseFromTilingWM(win, isPrimary, attempt = 0) {
+  if (aerospaceMissing || win.isDestroyed()) return;
+  const windowId = win.getMediaSourceId().split(':')[1];
+  const target = isPrimary ? 'main' : 'secondary';
+  execFile('aerospace', ['move-node-to-monitor', '--window-id', windowId, target], (err) => {
+    if (!err) return;
+    if (err.code === 'ENOENT') { aerospaceMissing = true; return; }
+    // Usually means AeroSpace hasn't detected the window yet — retry briefly.
+    if (attempt < 5) setTimeout(() => releaseFromTilingWM(win, isPrimary, attempt + 1), 300);
+  });
+}
+
 // One continuous flight across the whole desktop: one overlay per display,
 // each rendering its slice of a single global path, synced to a shared
 // wall-clock start (issue #6).
@@ -68,14 +88,17 @@ function createFlight(event) {
       resizable: false,
       movable: false,
       fullscreenable: false,
+      // Without this, macOS constrains a display-sized borderless window into
+      // the active screen's visible frame (the menu-bar nudge from the #6
+      // gotcha, plus a cross-display jump when another display is active).
+      enableLargerThanScreen: true,
       show: false,
       webPreferences: { contextIsolation: true, sandbox: true, autoplayPolicy: 'no-user-gesture-required' },
     });
     win.setAlwaysOnTop(true, 'screen-saver');
     win.setIgnoreMouseEvents(true);
     // false + visibleOnFullScreen: keeps flights visible over full-screen apps
-    // WITHOUT canJoinAllSpaces — with true, macOS drags the window to the
-    // focused display, which put primary-sized flights on the wrong monitor.
+    // WITHOUT canJoinAllSpaces (which puts the window on no particular Space).
     win.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true });
     win.loadFile('plane.html', {
       query: {
@@ -90,7 +113,10 @@ function createFlight(event) {
         audio: d.id === leftmost.id ? '1' : '0',
       },
     });
-    win.once('ready-to-show', () => win.showInactive());
+    win.once('ready-to-show', () => {
+      win.showInactive();
+      releaseFromTilingWM(win, d.id === primary.id);
+    });
     return win;
   });
   setTimeout(() => {
