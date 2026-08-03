@@ -10,19 +10,18 @@ independent of JiraAlerts and Power Automate. Repo: github.com/godfreyponce/jira
 `~/Developer/docs/superpowers/specs/2026-07-23-jiraplane-design.md`.
 Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
-**Last updated: 2026-08-02**
+**Last updated: 2026-08-03**
 
 ## Now
 
-- **#6 BUILT — awaiting owner acceptance (2026-08-02):** continuous flight across
-  all displays (commits 778ee9d, 9438763 — the latter widens the exit margin to
-  400px so the towed tag fully clears the screen before teardown; owner caught the
-  banner vanishing 2/5 on-screen): one overlay per display rendering a slice of one
-  global path, synced via shared wall-clock start + `--sync-delay`; speed fixed at
-  the accepted ~175px/s so duration scales with span. Root cause of the cut-short
-  flight: overlay sized to primary + `setVisibleOnAllWorkspaces(true)` relocation
-  (see gotcha below). Verify: `TEST_FLIGHT=1 npm start` with the external attached —
-  plane should take off on the left screen and exit the right screen's far edge.
+- **#6 ACCEPTANCE FAILED for tray-triggered flights (2026-08-03):** launch-time
+  `TEST_FLIGHT=1` crossed end to end, but tray → Test flight stays on whichever
+  display's menu bar was clicked (main-click → never reaches external;
+  external-click → never starts on main). Hypothesis on the issue: macOS relocates
+  the overlays to the focused display when created from the tray menu handler —
+  same family as the original `setVisibleOnAllWorkspaces` gotcha. Next: instrument
+  `win.getBounds()` after `showInactive()` to confirm, then defer creation past
+  menu close / re-pin bounds. Full test log + code read: issue #6 comment.
 - **#4 ACCEPTED & CLOSED (2026-08-02):** cargo-tag pendulum banner in `plane.html`
   (commit 94854a1): rigid-rope sim with accepted feel (weight 670, drag 5.0, rope 64);
   old manila banner + ripple filter removed. Skywriter option → issue #5 (now unblocked).
