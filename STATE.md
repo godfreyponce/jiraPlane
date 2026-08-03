@@ -14,14 +14,12 @@ Work queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
 
 ## Now
 
-- **#6 ROOT CAUSE FOUND + FIX BUILT (2026-08-03), awaiting owner re-test:** the
-  yank was **AeroSpace** (owner's tiling WM), not the tray path — it adopts each
-  overlay onto the FOCUSED monitor's workspace and snaps it back on every
-  setBounds. Fix: `releaseFromTilingWM()` in main.js asks the aerospace CLI to
-  move each overlay's node to its own monitor; AeroSpace then restores the frame
-  itself. Verified via bounds logs (both overlays stable on own monitors).
-  Owner test: tray → Test flight clicked on BOTH displays, flight crosses
-  end to end. Full investigation log: issue #6 comments.
+- **#6 ACCEPTED & CLOSED (2026-08-03):** continuous multi-display flight works on
+  both monitors (owner-verified). Root cause was **AeroSpace**, not the tray path:
+  it adopts each overlay onto the FOCUSED monitor's workspace and snaps back any
+  setBounds. Fix (commit 9de6527): `releaseFromTilingWM()` moves each overlay's
+  node to its own monitor via the aerospace CLI. Investigation log: issue #6.
+  Next up: #5 skywriter option (unblocked).
 - **#4 ACCEPTED & CLOSED (2026-08-02):** cargo-tag pendulum banner in `plane.html`
   (commit 94854a1): rigid-rope sim with accepted feel (weight 670, drag 5.0, rope 64);
   old manila banner + ripple filter removed. Skywriter option → issue #5 (now unblocked).
