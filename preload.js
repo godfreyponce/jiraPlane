@@ -7,4 +7,8 @@ contextBridge.exposeInMainWorld('jiraPlane', {
   openTicket: () => ipcRenderer.send('open-ticket'),
   // Drag (#11): pause/resume the flight schedule; pausedMs is the accumulated hold time
   dragging: (on, pausedMs) => ipcRenderer.send('dragging', { on, pausedMs }),
+  // Multi-display drag (#11): the drag-owning window broadcasts rig state while
+  // the plane deviates from course; other windows render from it.
+  flightState: (state) => ipcRenderer.send('flight-state', state),
+  onFlightState: (cb) => ipcRenderer.on('flight-state', (e, state) => cb(state)),
 });

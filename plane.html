@@ -321,8 +321,23 @@
           off = { ...target }; offV = { x: 0, y: 0 }; mode = 'course';
         }
       }
-      renderRig(courseX(s) + off.x, lineY + off.y, swoopY(s), attitude(s));
+      const gx = courseX(s) + off.x, gy = lineY + off.y;
+      const sy = swoopY(s), att = attitude(s);
+      renderRig(gx, gy, sy, att);
+      return { gx, gy, sy, att };
     }
+
+    // Multi-display drag (#11): the window that owns a drag/recovery mirrors
+    // its rig state to the sibling windows every frame; a final 'course'
+    // message hands the clock — with its accumulated pause — back to everyone.
+    let remote = null;   // deviation state owned by another display's window
+    let wasDeviating = false;
+    if (window.jiraPlane) window.jiraPlane.onFlightState((st) => {
+      if (st.phase === 'course') {
+        pausedMs = st.pausedMs; off = { x: st.offX, y: st.offY };
+        remote = null;                    // resume local clock-driven flight
+      } else remote = st;
+    });
 
     function launch() {
       // --sx/--ex are gone (#11): the sim's fromX/toX carry the course now
@@ -524,7 +539,19 @@
         }
         prevCursor = { x: cursor.x, y: cursor.y };
       }
-      stepFlight(dt);
+      if (remote) {
+        // a drag owned elsewhere drives the rig; pendulum + hit-test stay local
+        renderRig(remote.gx, remote.gy, remote.sy,
+                  { z: remote.az, x: remote.ax, y: remote.ay });
+      } else {
+        const rig = stepFlight(dt);
+        if (window.jiraPlane && (mode !== 'course' || wasDeviating)) {
+          window.jiraPlane.flightState({ phase: mode, gx: rig.gx, gy: rig.gy,
+            sy: rig.sy, az: rig.att.z, ax: rig.att.x, ay: rig.att.y,
+            pausedMs, offX: off.x, offY: off.y });
+          wasDeviating = mode !== 'course';
+        }
+      }
       if (bannerStyle === 'cargo') stepPendulum(dt);
       requestAnimationFrame(frame);
     }

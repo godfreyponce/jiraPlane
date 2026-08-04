@@ -106,6 +106,14 @@ ipcMain.on('dragging', (e, { on, pausedMs }) => {
       flightStartAt + flightDurMs + pausedMs + 1000 - Date.now());
   }
 });
+// Relay (#11): deviation state goes to every other window of the active flight
+// so all displays render the same dragged/recovering plane.
+ipcMain.on('flight-state', (e, state) => {
+  (activeFlight || []).forEach((win) => {
+    if (!win.isDestroyed() && win.webContents !== e.sender)
+      win.webContents.send('flight-state', state);
+  });
+});
 
 // One continuous flight across the whole desktop: one overlay per display,
 // each rendering its slice of a single global path, synced to a shared
