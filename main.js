@@ -3,6 +3,15 @@ const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const poller = require('./poller');
+const teams = require('./teams');
+
+// Login-launch (#7) means an instance may already be running when the owner
+// starts a dev `npm start` — two pollers would double-fly and double-DM.
+// Second instance exits immediately; quit the tray instance first for dev.
+if (!app.requestSingleInstanceLock()) {
+  console.log('jiraPlane already running — exiting this instance');
+  app.quit();
+}
 
 // Flight speed at the accepted feel: the #3/#4 design crossed the 1512-DIP dev
 // screen plus ~234px of offscreen margins in 10s.
@@ -199,6 +208,15 @@ function createFlight(event) {
   return wins;
 }
 
+// One detection engine, two outputs (#7): every event flies (except
+// reassigned — the plane deliberately skips that stream, #2) and every event
+// DMs. A DM failure is logged and dropped: state has already advanced, same
+// "a plane can't fail" model the poller documents — no retry, no re-fly.
+function dispatchEvent(event) {
+  if (event.type !== 'reassigned') enqueueFlight(event);
+  teams.sendForEvent(event).catch((e) => console.error(`teams sink failed: ${e.message}`));
+}
+
 function startPolling() {
   if (poller.configError) {
     console.error(`Polling disabled: ${poller.configError.message}`);
@@ -210,7 +228,7 @@ function startPolling() {
     if (pollingPaused || cycleInFlight) return;
     cycleInFlight = true;
     try {
-      (await poller.cycle()).forEach(enqueueFlight);
+      (await poller.cycle()).forEach(dispatchEvent);
     } catch (e) {
       console.error(`poll cycle failed: ${e.message}`);
     } finally {
@@ -222,7 +240,7 @@ function startPolling() {
 }
 
 function testFlight() {
-  enqueueFlight({
+  dispatchEvent({
     type: 'assigned',
     issueKey: 'PROJ-142',
     snippet: 'Fix login redirect',
