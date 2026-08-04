@@ -66,7 +66,11 @@ function releaseFromTilingWM(win, isPrimary, attempt = 0) {
   const windowId = win.getMediaSourceId().split(':')[1];
   const target = isPrimary ? 'main' : 'secondary';
   execFile('aerospace', ['move-node-to-monitor', '--window-id', windowId, target], (err) => {
-    if (!err) return;
+    if (!err) {
+      // AeroSpace just re-homed the window node; make sure the level survived (#12).
+      if (!win.isDestroyed()) win.setAlwaysOnTop(true, 'screen-saver');
+      return;
+    }
     if (err.code === 'ENOENT') { aerospaceMissing = true; return; }
     // Usually means AeroSpace hasn't detected the window yet — retry briefly.
     if (attempt < 5) setTimeout(() => releaseFromTilingWM(win, isPrimary, attempt + 1), 300);
@@ -129,13 +133,16 @@ function createFlight(event) {
       webPreferences: { contextIsolation: true, sandbox: true, autoplayPolicy: 'no-user-gesture-required',
                         preload: path.join(__dirname, 'preload.js') },
     });
-    win.setAlwaysOnTop(true, 'screen-saver');
     // forward: click-through but the page still gets mousemove, so the
     // renderer can hit-test the tag and arm the window (#9).
     win.setIgnoreMouseEvents(true, { forward: true });
     // false + visibleOnFullScreen: keeps flights visible over full-screen apps
     // WITHOUT canJoinAllSpaces (which puts the window on no particular Space).
     win.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true });
+    // Level goes LAST: setVisibleOnAllWorkspaces can reset the macOS window
+    // level, which let regular app windows cover the plane (#12). Re-asserted
+    // again after show and after the AeroSpace release below.
+    win.setAlwaysOnTop(true, 'screen-saver');
     win.loadFile('plane.html', {
       query: {
         type: event.type,
@@ -158,6 +165,7 @@ function createFlight(event) {
     });
     win.once('ready-to-show', () => {
       win.showInactive();
+      win.setAlwaysOnTop(true, 'screen-saver'); // showing can re-stack (#12)
       releaseFromTilingWM(win, d.id === primary.id);
     });
     return win;
