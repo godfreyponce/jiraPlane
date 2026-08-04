@@ -2,9 +2,9 @@
 glass: jiraplane
 status: in-progress
 last_worked_on: 2026-08-03
-next_action: "#10 — Banner style picker (Cargo tag / Skywriter tray choice, persisted). Spec AND plan already exist (docs/superpowers/plans/2026-08-03-issue-10.md, owner-gated at plan review) — skip /plan-ticket, go straight to /build-ticket 10. (#5 is the same work pre-template; it closes when #10 lands. #7/#8/#9 are unlabeled — owner green-light needed.)"
+next_action: "#9 — Clickable ticket link on the towed banner (owner green-lit 2026-08-03). No spec or plan yet — start with /plan-ticket 9. The ticket has an open design question (generous hitbox vs. hover-slows-plane) the owner must answer at plan review. (#7/#8 remain unlabeled — owner green-light needed.)"
 blocked_on: ""
-phase: "v1 shipped and accepted through #6: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+phase: "v1 shipped and accepted through #10: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
@@ -21,7 +21,7 @@ Archive: `docs/HISTORY.md`. Queue: GitHub Issues (`gh issue list`). Protocol: `A
 
 *Unaccepted work only. Anything the owner has accepted belongs in `docs/HISTORY.md`, not here.*
 
-- #10 banner style picker: spec approved, plan approved, nothing built yet.
+- (empty — nothing unaccepted)
 
 ## Run / verify (do this first)
 
@@ -39,6 +39,8 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
   commit or quote values. Jira PAT **expires 2027-01-16**.
 - `state.json` is the app's dedup state (gitignored) — NOT related to STATE.md. Delete/reset
   it to re-trigger the silent seed.
+- `settings.json` (gitignored) holds user prefs — currently the banner style (#10). Separate
+  file from `state.json` precisely so resetting dedup state keeps the user's choice.
 - All visuals must stay in the single self-contained `plane.html` — UI iteration swaps that
   one file, nothing else.
 - Overlay windows need `'screen-saver'` level + `setVisibleOnAllWorkspaces(false, {visibleOnFullScreen: true})`

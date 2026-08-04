@@ -11,6 +11,29 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Banner style picker + Skywriter — #10 (2026-08-03) — ACCEPTED & CLOSED; commits 60854af, 62e45cb
+
+Tray "Banner style" submenu (Cargo tag / Skywriter radios) persisted to a new gitignored
+`settings.json` — deliberately separate from `state.json` so resetting dedup state keeps the
+choice; any read failure falls back to cargo. `createFlight` passes `banner` plus skywriter
+text bounds `textX0`/`textX1` (6%–88% of the primary display, global px) to the overlay.
+
+Skywriter is an as-is port of the round-1 prototype (`design-directions/4-skywriter.html`):
+each letter is a fixed-position smoke puff laid down at the point — and moment — the plane's
+tail crosses its x, on the swoop sine, glowing then blurring/drifting up. Tag + rope hidden,
+pendulum sim skipped (the per-frame `flyY` re-pin loop stays — it serves the plane). One
+deviation from the prototype: puff animation duration is the REMAINING flight time, so
+nothing pops off mid-fade at the 1s-after-flight window teardown. Cargo path byte-for-byte
+untouched. Closed #5 (same work, pre-template).
+
+Plan held with no deviations. Agent verification gap: the terminal lacked Screen Recording +
+Accessibility permissions, so the tray-click write path and on-screen visuals were verified
+by the owner at acceptance; the agent verified both styles standalone in Chrome (localhost
+serve — the extension refuses file:// URLs), read/fallback paths of `settings.json`, and
+clean app runs in both styles plus `MAX_EVENTS_PER_CYCLE=0`.
+
+---
+
 ## Continuous multi-display flight — #6 (2026-08-03) — ACCEPTED & CLOSED; commit 9de6527
 
 One overlay window per display, each rendering its slice of a single global flight path,
