@@ -54,7 +54,11 @@
   }
 
   /* B2 wide cream glider: 3 faces, spine (fold line) at y=52 in model space */
-  .model { position: relative; width: 170px; height: 80px; transform-style: preserve-3d; }
+  .model { position: relative; width: 170px; height: 80px; transform-style: preserve-3d;
+           transition: scale .15s; }
+  /* Grab affordance (#11): like the tag's #9 lift — macOS renders no cursor for
+     this never-activated overlay, so the plane itself signals grabbability */
+  body.plane-hot .model { scale: 1.07; }
   .face  { position: absolute; left: 0; width: 170px; }
   .wing  {
     top: -26px; height: 78px;
@@ -81,6 +85,8 @@
     overflow: visible;
   }
   body.fly .streak { animation-play-state: running; }
+  /* Drag (#11): the air stops rushing past while the plane is held (Round-1 pick) */
+  body.held .streak { animation-play-state: paused; }
   /* standalone rotate: composes with the animated transform (transform: rotate() would be overwritten)
      s1/s3 viewBoxes are wider than their width attrs, so those streaks render
      ~73% scale — deliberate, this is the accepted look (#4 cleanup note) */
@@ -424,24 +430,83 @@
        real while armed) vs. the tag's current rect + HIT_PAD. */
     const ticketUrl = params.get('url') || '';
     const clickable = !!ticketUrl && bannerStyle === 'cargo' && !!window.jiraPlane;
+    // Drag (#11): cargo flights only (skywriter's puff schedule can't survive a
+    // pause) — deliberately independent of ticketUrl, so digest and no-.env
+    // flights are draggable too.
+    const draggable = bannerStyle === 'cargo' && !!window.jiraPlane;
     const HIT_PAD = 24; // generous hitbox, owner option (a) — a guess; tune by feel
-    let cursor = null, hot = false;
-    if (clickable) {
+    let cursor = null, hot = false, armed = false;
+    const inRect = (r) => !!cursor && document.body.classList.contains('fly') &&
+      cursor.x > r.left - HIT_PAD && cursor.x < r.right + HIT_PAD &&
+      cursor.y > r.top - HIT_PAD && cursor.y < r.bottom + HIT_PAD;
+    if (clickable || draggable) {
       addEventListener('mousemove', (e) => { cursor = { x: e.clientX, y: e.clientY }; });
-      addEventListener('click', () => { if (hot) window.jiraPlane.openTicket(); });
+    }
+    if (clickable) {
+      // click guard (#11): a mouseup that ends a drag must not open the ticket
+      addEventListener('click', () => { if (hot && !dragJustEnded) window.jiraPlane.openTicket(); });
     }
     function updateHot() {
-      if (!clickable) return;
-      const r = tagEl.getBoundingClientRect();
-      const inside = !!cursor && document.body.classList.contains('fly') &&
-        cursor.x > r.left - HIT_PAD && cursor.x < r.right + HIT_PAD &&
-        cursor.y > r.top - HIT_PAD && cursor.y < r.bottom + HIT_PAD;
-      if (inside !== hot) {
-        hot = inside;
-        window.jiraPlane.setTagHot(hot);
+      if (!clickable && !draggable) return;
+      const tagHot = clickable && inRect(tagEl.getBoundingClientRect());
+      // plane territory = bank rect + HIT_PAD; tag wins where they overlap
+      const planeHot = draggable && !tagHot && inRect(bankEl.getBoundingClientRect());
+      if (tagHot !== hot) {
+        hot = tagHot;
         document.documentElement.style.cursor = hot ? 'pointer' : '';
         tagEl.classList.toggle('hot', hot);
       }
+      document.body.classList.toggle('plane-hot', planeHot || mode === 'drag');
+      // 'tag-hot' is any-hot since #11: armed while either hitbox is hot, and
+      // for the whole grab — macOS mouse capture delivers the drag to the
+      // mousedown window even when the cursor outruns every hitbox.
+      const arm = tagHot || planeHot || mode === 'drag';
+      if (arm !== armed) {
+        armed = arm;
+        window.jiraPlane.setTagHot(arm);
+      }
+    }
+
+    // ===== drag the plane (#11) =====
+    // FLING/RETURN_TO_LINE are Round-1 picks like the sim's K/D: fling off,
+    // release eases back to the flight line. Judged by feel — don't re-derive.
+    const FLING = 0, RETURN_TO_LINE = true;
+    let flingV = { x: 0, y: 0 }, prevCursor = null;
+    let dragJustEnded = false;
+
+    function planeHitTest(e) { // plane territory = bank rect + HIT_PAD, tag wins overlap
+      const p = { x: e.clientX, y: e.clientY };
+      const was = cursor; cursor = p;
+      const inPlane = inRect(bankEl.getBoundingClientRect());
+      const inTag = inRect(tagEl.getBoundingClientRect());
+      cursor = was ?? p;
+      return inPlane && !inTag;
+    }
+
+    if (draggable) {
+      addEventListener('mousedown', (e) => {
+        if (!planeHitTest(e)) return;
+        e.preventDefault();
+        cursor = { x: e.clientX, y: e.clientY };
+        flingV = { x: 0, y: 0 }; prevCursor = null;
+        mode = 'drag'; heldSince = Date.now();
+        const s = flightS();
+        grabOff.x = (courseX(s) + off.x) - (e.clientX + ox());
+        grabOff.y = (lineY + off.y) - (e.clientY + oy());
+        document.body.classList.add('held');
+        window.jiraPlane.dragging(true, pausedMs);
+      });
+      addEventListener('mouseup', () => {
+        if (mode !== 'drag') return;
+        pausedMs += Date.now() - heldSince; heldSince = null;
+        target = RETURN_TO_LINE ? { x: 0, y: 0 } : { x: 0, y: off.y };
+        offV = { x: flingV.x * FLING, y: flingV.y * FLING };
+        mode = 'recover';
+        document.body.classList.remove('held');
+        window.jiraPlane.dragging(false, pausedMs);
+        dragJustEnded = true;                    // cleared after the same-tick click
+        setTimeout(() => { dragJustEnded = false; }, 0);
+      });
     }
 
     // #11: one loop for both banner styles. stepFlight moves the rig (and
@@ -450,6 +515,15 @@
     // mid-flight, #6); the pendulum + hit-test only exist for the cargo tag.
     function frame(now) {
       const dt = Math.min((now - last) / 1000, .032); last = now;
+      // #11: smoothed cursor velocity feeds the release fling
+      if (mode === 'drag' && cursor) {
+        if (prevCursor) {
+          const k = Math.min(1, 10 * dt); // smoothing rate 10/s — a guess, tune by feel
+          flingV.x += ((cursor.x - prevCursor.x) / dt - flingV.x) * k;
+          flingV.y += ((cursor.y - prevCursor.y) / dt - flingV.y) * k;
+        }
+        prevCursor = { x: cursor.x, y: cursor.y };
+      }
       stepFlight(dt);
       if (bannerStyle === 'cargo') stepPendulum(dt);
       requestAnimationFrame(frame);

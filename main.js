@@ -32,6 +32,12 @@ function setBannerStyle(style) {
 const flightQueue = [];
 let activeFlight = null;
 let activeFlightUrl = ''; // browse URL for the flight in the air (#9); '' = not clickable
+let teardownTimer = null;
+let flightStartAt = 0, flightDurMs = 0;
+
+function destroyActiveFlight() {
+  (activeFlight || []).forEach((win) => { if (!win.isDestroyed()) win.destroy(); });
+}
 
 function enqueueFlight(event) {
   flightQueue.push(event);
@@ -77,15 +83,28 @@ function releaseFromTilingWM(win, isPrimary, attempt = 0) {
   });
 }
 
-// Clickable tag (#9): the renderer arms/disarms its own window as the cursor
-// enters/leaves the tag's padded hitbox; a click while armed opens the ticket.
-// Main opens only the URL it derived itself — the renderer sends no payload.
+// Clickable tag (#9) / draggable plane (#11): the renderer arms/disarms its
+// own window as the cursor enters/leaves either padded hitbox ('tag-hot' is
+// any-hot since #11, and stays on for a whole drag). A click while armed
+// opens the ticket. Main opens only the URL it derived itself — the renderer
+// sends no payload.
 ipcMain.on('tag-hot', (e, hot) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!hot, { forward: true });
 });
 ipcMain.on('open-ticket', () => {
   if (activeFlightUrl) shell.openExternal(activeFlightUrl);
+});
+// Drag (#11): the flight clock pauses while the plane is held, so the fixed
+// teardown timer would kill the windows mid-drag. Cancel on grab; re-arm on
+// release with the accumulated pause shifting the schedule.
+ipcMain.on('dragging', (e, { on, pausedMs }) => {
+  clearTimeout(teardownTimer);
+  teardownTimer = null;
+  if (!on) {
+    teardownTimer = setTimeout(destroyActiveFlight,
+      flightStartAt + flightDurMs + pausedMs + 1000 - Date.now());
+  }
 });
 
 // One continuous flight across the whole desktop: one overlay per display,
@@ -170,11 +189,8 @@ function createFlight(event) {
     });
     return win;
   });
-  setTimeout(() => {
-    wins.forEach((win) => {
-      if (!win.isDestroyed()) win.destroy();
-    });
-  }, START_LEAD_MS + durMs + 1000);
+  flightStartAt = start; flightDurMs = durMs;
+  teardownTimer = setTimeout(destroyActiveFlight, START_LEAD_MS + durMs + 1000);
   return wins;
 }
 
