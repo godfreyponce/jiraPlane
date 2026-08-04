@@ -2,10 +2,12 @@
 // Read-only: only GETs. Auth is a Personal Access Token sent as a Bearer header
 // (DC/Server scheme; Jira Cloud uses email+token Basic auth instead).
 //
-// Three event streams per cycle:
+// Four event streams per cycle:
 //   1. New comments on tickets currently assigned to you
 //   2. New comments that @mention you (any ticket)
 //   3. Tickets newly assigned to you (diff vs last cycle's set)
+//   4. Tickets reassigned away from you (newly absent from that set) — DM-only,
+//      the plane deliberately skips this stream (#2, upheld in #7)
 // Comments you authored yourself are always skipped.
 //
 // Battle-tested patterns kept from the Python original:
@@ -48,6 +50,9 @@ function buildConfig() {
     commentsPerIssue: parseInt(env.COMMENTS_PER_ISSUE || '20', 10),
     pruneDays: parseInt(env.PRUNE_DAYS || '30', 10),
     maxEventsPerCycle: parseInt(env.MAX_EVENTS_PER_CYCLE || '3', 10),
+    // Teams DM sink (#7): optional — empty string disables the sink entirely.
+    teamsWebhookUrl: env.TEAMS_WEBHOOK_URL || '',
+    snippetChars: parseInt(env.SNIPPET_CHARS || '280', 10),
     statePath: path.join(__dirname, 'state.json'),
   };
 }
@@ -185,6 +190,8 @@ async function collectRelevantComments() {
         issueKey: key,
         summary,
         commentId: String(c.id),
+        author: author.displayName || 'Unknown',
+        body,
         created: c.created || '',
         mentions,
       });
@@ -199,6 +206,26 @@ async function currentAssignments() {
   const out = {};
   for (const i of await search('assignee = currentUser() ORDER BY updated DESC')) {
     out[i.key] = (i.fields && i.fields.summary) || '(no summary)';
+  }
+  return out;
+}
+
+async function fetchAssignees(keys) {
+  // For tickets that left your plate, look up who has them now.
+  if (!keys.length) return {};
+  const data = await get('/rest/api/2/search', {
+    jql: `key in (${keys.join(',')})`,
+    fields: 'summary,assignee',
+    maxResults: 100,
+  });
+  const out = {};
+  for (const i of data.issues || []) {
+    const a = (i.fields && i.fields.assignee) || null;
+    out[i.key] = {
+      assignee: a ? a.displayName : null,
+      isMe: !!a && (a.name === config.username || a.key === config.userKey),
+      summary: (i.fields && i.fields.summary) || '(no summary)',
+    };
   }
   return out;
 }
@@ -229,17 +256,43 @@ async function cycle() {
     .sort((a, b) => (a.created < b.created ? -1 : 1));
   const newlyAssigned = currentKeys.filter((k) => !(k in st.assignees)).sort();
 
+  // Reassigned away (#7, ported from JiraAlerts run.py): tickets that left
+  // last cycle's set. Look up who has them now; one that's still yours left
+  // the active set for another reason (e.g. closed) — not a reassignment.
+  const leftMe = Object.keys(st.assignees).filter((k) => !(k in assignmentsNow)).sort();
+  const reassigned = [];
+  if (leftMe.length) {
+    const info = await fetchAssignees(leftMe);
+    for (const k of leftMe) {
+      const meta = info[k] || {};
+      if (meta.isMe) {
+        console.log(`poller: skipped ${k} — left active set but still yours (closed?)`);
+        continue;
+      }
+      reassigned.push({
+        type: 'reassigned',
+        issueKey: k,
+        snippet: meta.summary || '',
+        newAssignee: meta.assignee || null,
+      });
+    }
+  }
+
   const events = [
     ...newComments.map((c) => ({
       type: c.mentions ? 'mention' : 'comment',
       issueKey: c.issueKey,
       snippet: c.summary,
+      author: c.author,
+      body: c.body,
+      commentId: c.commentId,
     })),
     ...newlyAssigned.map((k) => ({
       type: 'assigned',
       issueKey: k,
       snippet: assignmentsNow[k],
     })),
+    ...reassigned,
   ];
 
   // Advance state before returning: a plane can't fail like a webhook, so
@@ -252,10 +305,19 @@ async function cycle() {
   pruneSeen(st);
   saveState(st);
 
-  // Flood valve: burst -> one digest plane.
+  // Flood valve: burst -> one digest (one plane AND one DM, same rules).
   if (events.length > config.maxEventsPerCycle) {
     console.log(`poller: flood valve — ${events.length} event(s) collapsed into a digest`);
-    return [{ type: 'digest', issueKey: '', snippet: `${events.length} Jira updates` }];
+    return [{
+      type: 'digest',
+      issueKey: '',
+      snippet: `${events.length} Jira updates`,
+      counts: {
+        comments: newComments.length,
+        assigned: newlyAssigned.length,
+        reassigned: reassigned.length,
+      },
+    }];
   }
 
   if (events.length) {
