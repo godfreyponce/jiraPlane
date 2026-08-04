@@ -11,6 +11,45 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Draggable plane — #11 (2026-08-04) — ACCEPTED & CLOSED; commits d316eeb..49ef3a5
+
+Grab the plane mid-flight (cargo style only) and drag it out of the way; the flight clock
+freezes while held, and on release the plane springs back to course **at the drop height**
+(gate-2 owner call — flipped from the prototype's return-to-flight-line default) and
+completes its crossing. Built in four commits from the 2026-08-04 plan:
+
+- **Motion → per-frame sim (d316eeb).** The move/swoop/bank CSS keyframes became pure
+  functions of shared wall-clock flight-time `s` (`courseX`/`swoopY`/`attitude`, formulas
+  derived from the keyframe tables — numerically verified identical at the sampled rows).
+  Undragged flights are pixel-equivalent; multi-display windows stay in sync with zero IPC
+  because every window computes the same `s`. One unified rAF `frame()` for both banner
+  styles subsumed the skywriter `repin` loop and the per-frame `flyY` re-pin.
+- **Drag + pausing teardown (d9a66c8).** Plane hitbox = bank rect + HIT_PAD, tag wins
+  overlap; `'tag-hot'` became any-hot (tag ∪ plane ∪ mid-drag — macOS mouse capture
+  delivers the whole drag to the mousedown window). Deviation `off` is cursor-driven while
+  held, spring-recovered (K=55, D=10, Round-1 picks) after release; `pausedMs` shifts the
+  schedule and rides the new `'dragging'` IPC so main cancels the teardown on grab and
+  re-arms it shifted on release. Click guard: a mouseup ending a drag suppresses the
+  same-tick tag click. Drag is deliberately URL-independent (digest/no-`.env` flights
+  drag too); skywriter is not draggable (#14 filed for per-frame smoke). Streaks pause
+  while held; the plane hover-lifts like the #9 tag (no cursor rendering on overlays).
+- **Multi-display broadcast (9575141).** The drag-owning window mirrors rig state per
+  frame over `'flight-state'` (main relays to sibling windows); one final `course`
+  message hands back `pausedMs` + the persistent `off` so all displays adopt the shifted
+  schedule and drop height. Course-mode flights broadcast nothing.
+- **Keep drop height (49ef3a5).** `RETURN_TO_LINE = false`: recovery targets
+  `{x: 0, y: off.y}` — x deviation cleans up, the line stays where dropped.
+
+Verification: standalone browser previews (both styles) + numeric parity probes; a
+git-ignored harness (`design-directions/drag-test.html`) that loads the real plane.html
+with a stubbed bridge and worker-driven rAF shim exercised the full state machine
+(grab/freeze/track, release/recover/rejoin, pausedMs accumulation, click guard, tag-wins
+overlap, sender/receiver broadcast); Electron test flights on the real two-display setup
+ran clean under ELECTRON_ENABLE_LOGGING for both styles. Real-cursor feel + cross-seam
+drag were the owner's acceptance pass. Known accepted edges (from the plan): teardown
+re-arms from the schedule, not the recovery (+1s slack absorbs typical drops); the audio
+envelope doesn't stretch with a long hold; attitude stays frozen at the grab pose.
+
 ## Plane above every app — #12 (2026-08-04) — ACCEPTED & CLOSED; commit 68f5e81
 
 The owner saw a plain regular app window cover the plane despite the `'screen-saver'`
