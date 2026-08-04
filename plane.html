@@ -483,9 +483,10 @@
     }
 
     // ===== drag the plane (#11) =====
-    // FLING/RETURN_TO_LINE are Round-1 picks like the sim's K/D: fling off,
-    // release eases back to the flight line. Judged by feel — don't re-derive.
-    const FLING = 0, RETURN_TO_LINE = true;
+    // FLING/RETURN_TO_LINE are feel picks like the sim's K/D: fling off, and a
+    // released plane keeps its drop height (gate-2 owner call, 2026-08-04 —
+    // flipped from the Round-1 return-to-line default). Don't re-derive.
+    const FLING = 0, RETURN_TO_LINE = false;
     let flingV = { x: 0, y: 0 }, prevCursor = null;
     let dragJustEnded = false;
 
