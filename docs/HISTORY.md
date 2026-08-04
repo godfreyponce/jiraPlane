@@ -11,6 +11,44 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Drag scrubs flight progress + three-grab fast exit — #15 (2026-08-04) — ACCEPTED & CLOSED; commits 3b08fcd..486a212
+
+Releasing a dragged plane now re-seeds flight progress from the drop point — drop it back
+near the entry and it re-flies from there, drop it near the exit and the flight ends early.
+A flight tolerates three grabs; the third release makes the plane ungrabbable (no hover
+lift, no arming) and it bolts for the exit at 4× cruise. Built from the 2026-08-04 plan
+after a prototype gate (`design-directions/2026-08-04-scrub-sim.html`, git-ignored) where
+the owner picked the Round-1 constants: `EXIT_RATE=4`, `BLEND=3`, scrub releases keep drop
+height, the exit does not return to the flight line, and the exit flattens the swoop,
+levels the attitude, and speeds up the streaks (uniform .45s cycle via `body.exit`).
+
+- **Re-seed release (3b08fcd).** `mouseup` inverts `courseX` at the drop x for `s2` and
+  re-seeds `pausedMs` so `flightS() === s2` immediately (negative = jumped ahead). `off.x`
+  is zero by construction, so #11's spring only ever recovers y and clamp residuals; the
+  swoop delta folds into `off.y` (no vertical pop) and the attitude gap decays through
+  `attDelta` at `BLEND` (rejoin snap extended with a 0.5° epsilon). Main's old teardown
+  formula was already correct under re-seeding, so this commit touched only plane.html.
+- **Grab counter + fast exit (486a212).** `MAX_GRABS=3`; the 3rd release sets
+  `exitAt = {t, s2}` and `flightS()` switches to `exitAt.s + EXIT_RATE × elapsed` — a pure
+  wall-clock function, so sibling displays compute the identical exit with no per-frame
+  IPC. The `'dragging'` IPC payload changed meaning: the renderer now sends the projected
+  end wall-time `endAtMs` (re-seeds and the exit both move it) and main just schedules
+  `endAtMs + 1000` — `flightStartAt`/`flightDurMs` deleted. The broadcast carries `grabs`
+  (siblings honor the count for lift/arming) and `exit`; a deliberate deviation from the
+  plan snippet adopts `exit` from any broadcast phase, not just the course handoff, so the
+  second display's streaks speed up at the release instant.
+
+Verification: the real app on the two-display setup, driven through CDP synthetic events
+against the renderer's own listeners (CGEvent needs Accessibility, so no scripted OS-level
+drags), with trusted-event counters proving clean runs. Measured: re-seed exact and
+pop-free at the release instant (one-frame transform deltas), re-flown stretch at 1×,
+double-rewind teardown 108ms from the predicted schedule, forward drop ended ~12s early
+(192ms delta), cross-display exit clock identical to the millisecond, exit rate 4.00×,
+teardown 62ms from `endAtMs+1s`, two-grab flights and undragged/skywriter flights
+unchanged. Feel was the owner's pass. Accepted edges (from the plan): audio desyncs on
+any scrub and a rewind can outlive it; a drop clamped past the course end leans on the
++1s teardown slack; sub-0.5° pose gap possible at the handoff.
+
 ## Draggable plane — #11 (2026-08-04) — ACCEPTED & CLOSED; commits d316eeb..49ef3a5
 
 Grab the plane mid-flight (cargo style only) and drag it out of the way; the flight clock
