@@ -315,14 +315,23 @@
         offV.x += (-K * (off.x - target.x) - D * offV.x) * dt;
         offV.y += (-K * (off.y - target.y) - D * offV.y) * dt;
         off.x += offV.x * dt; off.y += offV.y * dt;
-        // REJOIN_EPS = 1 (px, px/s): snap threshold, a guess — invisible at that scale
+        // REJOIN_EPS = 1 (px, px/s) + 0.5° attDelta (#15): snap thresholds,
+        // a guess — invisible at that scale
         if (Math.hypot(off.x - target.x, off.y - target.y) < 1 &&
-            Math.hypot(offV.x, offV.y) < 1) {
-          off = { ...target }; offV = { x: 0, y: 0 }; mode = 'course';
+            Math.hypot(offV.x, offV.y) < 1 &&
+            Math.max(Math.abs(attDelta.z), Math.abs(attDelta.x), Math.abs(attDelta.y)) < 0.5) {
+          off = { ...target }; offV = { x: 0, y: 0 }; attDelta = { z: 0, x: 0, y: 0 };
+          mode = 'course';
         }
       }
       const gx = courseX(s) + off.x, gy = lineY + off.y;
-      const sy = swoopY(s), att = attitude(s);
+      const sy = swoopY(s);
+      let att = attitude(s);
+      // #15: the re-seed jumps s, so attitude(s) pops — attDelta carries the
+      // pose gap and decays it at BLEND
+      const f = Math.exp(-BLEND * dt);
+      attDelta.z *= f; attDelta.x *= f; attDelta.y *= f;
+      att = { z: att.z + attDelta.z, x: att.x + attDelta.x, y: att.y + attDelta.y };
       renderRig(gx, gy, sy, att);
       return { gx, gy, sy, att };
     }
@@ -482,11 +491,14 @@
       }
     }
 
-    // ===== drag the plane (#11) =====
-    // FLING/RETURN_TO_LINE are feel picks like the sim's K/D: fling off, and a
-    // released plane keeps its drop height (gate-2 owner call, 2026-08-04 —
-    // flipped from the Round-1 return-to-line default). Don't re-derive.
+    // ===== drag the plane (#11) + scrub re-seed (#15) =====
+    // FLING/RETURN_TO_LINE/BLEND are feel picks like the sim's K/D: fling off,
+    // a released plane keeps its drop height (#11 gate-2 call, 2026-08-04),
+    // and the re-seed pose gap decays at BLEND (#15 Round-1 gate, 2026-08-04).
+    // Don't re-derive.
     const FLING = 0, RETURN_TO_LINE = false;
+    const BLEND = 3;                         // pose-blend rate, 1/s
+    let attDelta = { z: 0, x: 0, y: 0 };     // pose gap at a re-seed, decays at BLEND
     let flingV = { x: 0, y: 0 }, prevCursor = null;
     let dragJustEnded = false;
 
@@ -514,7 +526,20 @@
       });
       addEventListener('mouseup', () => {
         if (mode !== 'drag') return;
-        pausedMs += Date.now() - heldSince; heldSince = null;
+        // #15 re-seed: the drop x IS the new course position. Invert courseX to
+        // get s2, jump the clock there (negative pausedMs just means it jumped
+        // ahead), fold the swoop delta into off.y so there's no vertical pop,
+        // and hand the attitude gap to attDelta to decay.
+        const sHeld = flightS();
+        const dropX = courseX(sHeld) + off.x;             // plane's global x right now
+        let s2 = (dropX - fromX) / (toX - fromX) * durS;  // invert courseX
+        s2 = Math.max(0, Math.min(durS, s2));             // clamp at the course ends
+        pausedMs = Date.now() - startAt - s2 * 1000;      // re-seed: flightS() === s2 now
+        heldSince = null;
+        off.x = dropX - courseX(s2);                      // 0 unless s2 clamped
+        off.y += swoopY(sHeld) - swoopY(s2);              // fold the swoop jump
+        const a1 = attitude(sHeld), a2 = attitude(s2);
+        attDelta = { z: a1.z - a2.z, x: a1.x - a2.x, y: a1.y - a2.y };
         target = RETURN_TO_LINE ? { x: 0, y: 0 } : { x: 0, y: off.y };
         offV = { x: flingV.x * FLING, y: flingV.y * FLING };
         mode = 'recover';
