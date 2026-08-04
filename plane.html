@@ -87,6 +87,10 @@
   body.fly .streak { animation-play-state: running; }
   /* Drag (#11): the air stops rushing past while the plane is held (Round-1 pick) */
   body.held .streak { animation-play-state: paused; }
+  /* Fast exit (#15): after the 3rd grab the air rushes past faster — uniform
+     fast cycle (Round-1 pick). !important: the per-streak .streak.sN rules set
+     their own animation-duration at higher specificity. */
+  body.exit .streak { animation-duration: .45s !important; }
   /* standalone rotate: composes with the animated transform (transform: rotate() would be overwritten)
      s1/s3 viewBoxes are wider than their width attrs, so those streaks render
      ~73% scale — deliberate, this is the accepted look (#4 cleanup note) */
@@ -279,10 +283,16 @@
       const w = Math.sin(2 * Math.PI * s / (durS / 2));
       return { z: -14 * w, x: 5 + 16 * w, y: -10 * w };
     }
+    const lerp = (a, b, k) =>   // per attitude component (#15 exit leveling)
+      ({ z: a.z + (b.z - a.z) * k, x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
 
     // flight clock: freezes while held (#11 owner decision), pause shifts the schedule
     let pausedMs = 0, heldSince = null;
     function flightS() {
+      // #15: after the 3rd release, s advances at EXIT_RATE × real time from the
+      // release point — a pure wall-clock function, so every display window
+      // computes the same exit with no per-frame IPC.
+      if (exitAt) return Math.min(durS, exitAt.s + EXIT_RATE * (Date.now() - exitAt.t) / 1000);
       const t = heldSince ?? Date.now();
       return Math.min(durS, Math.max(0, (t - startAt - pausedMs) / 1000));
     }
@@ -325,13 +335,21 @@
         }
       }
       const gx = courseX(s) + off.x, gy = lineY + off.y;
-      const sy = swoopY(s);
+      let sy = swoopY(s);
       let att = attitude(s);
       // #15: the re-seed jumps s, so attitude(s) pops — attDelta carries the
       // pose gap and decays it at BLEND
       const f = Math.exp(-BLEND * dt);
       attDelta.z *= f; attDelta.x *= f; attDelta.y *= f;
       att = { z: att.z + attDelta.z, x: att.x + attDelta.x, y: att.y + attDelta.y };
+      // #15 fast-exit visuals (Round-1 picks: flatten the swoop, level the
+      // attitude): pure functions of the wall clock — multi-display exit sync
+      // depends on that, no per-window state.
+      if (exitAt) {
+        const exitK = 1 - Math.exp(-BLEND * (Date.now() - exitAt.t) / 1000);  // 0 → 1
+        sy *= (1 - exitK);
+        att = lerp(att, { z: 0, x: 5, y: 0 }, exitK);        // level cruise pose
+      }
       renderRig(gx, gy, sy, att);
       return { gx, gy, sy, att };
     }
@@ -342,6 +360,11 @@
     let remote = null;   // deviation state owned by another display's window
     let wasDeviating = false;
     if (window.jiraPlane) window.jiraPlane.onFlightState((st) => {
+      grabs = Math.max(grabs, st.grabs);  // sibling lift/arming honors the count (#15)
+      // #15: an exit is permanent (no grab can follow the 3rd release), so adopt
+      // it from any phase — the streaks speed up at the release instant on every
+      // display, not just at the course handoff.
+      if (st.exit) { exitAt = st.exit; document.body.classList.add('exit'); }
       if (st.phase === 'course') {
         pausedMs = st.pausedMs; off = { x: st.offX, y: st.offY };
         remote = null;                    // resume local clock-driven flight
@@ -473,8 +496,10 @@
     function updateHot() {
       if (!clickable && !draggable) return;
       const tagHot = clickable && inRect(tagEl.getBoundingClientRect());
-      // plane territory = bank rect + HIT_PAD; tag wins where they overlap
-      const planeHot = draggable && !tagHot && inRect(bankEl.getBoundingClientRect());
+      // plane territory = bank rect + HIT_PAD; tag wins where they overlap.
+      // #15: no lift, no arming for a plane that won't respond (grabs exhausted).
+      const planeHot = draggable && grabs < MAX_GRABS && !tagHot &&
+                       inRect(bankEl.getBoundingClientRect());
       if (tagHot !== hot) {
         hot = tagHot;
         document.documentElement.style.cursor = hot ? 'pointer' : '';
@@ -498,6 +523,10 @@
     // Don't re-derive.
     const FLING = 0, RETURN_TO_LINE = false;
     const BLEND = 3;                         // pose-blend rate, 1/s
+    const EXIT_RATE = 4;                     // fast-exit speed, × cruise (#15 Round-1)
+    const MAX_GRABS = 3;                     // ticket: three grabs, then the plane is done
+    let grabs = 0;
+    let exitAt = null;                       // { t: wall ms, s: flight s } — 3rd release
     let attDelta = { z: 0, x: 0, y: 0 };     // pose gap at a re-seed, decays at BLEND
     let flingV = { x: 0, y: 0 }, prevCursor = null;
     let dragJustEnded = false;
@@ -513,8 +542,9 @@
 
     if (draggable) {
       addEventListener('mousedown', (e) => {
-        if (!planeHitTest(e)) return;
+        if (grabs >= MAX_GRABS || !planeHitTest(e)) return;
         e.preventDefault();
+        grabs++;
         cursor = { x: e.clientX, y: e.clientY };
         flingV = { x: 0, y: 0 }; prevCursor = null;
         mode = 'drag'; heldSince = Date.now();
@@ -522,7 +552,7 @@
         grabOff.x = (courseX(s) + off.x) - (e.clientX + ox());
         grabOff.y = (lineY + off.y) - (e.clientY + oy());
         document.body.classList.add('held');
-        window.jiraPlane.dragging(true, pausedMs);
+        window.jiraPlane.dragging(true, 0);    // endAtMs unused while held
       });
       addEventListener('mouseup', () => {
         if (mode !== 'drag') return;
@@ -543,8 +573,17 @@
         target = RETURN_TO_LINE ? { x: 0, y: 0 } : { x: 0, y: off.y };
         offV = { x: flingV.x * FLING, y: flingV.y * FLING };
         mode = 'recover';
+        if (grabs >= MAX_GRABS) {                // #15 3rd release: done being toyed
+          exitAt = { t: Date.now(), s: s2 };     // with — the plane bolts for the exit
+          document.body.classList.add('exit');
+        }
         document.body.classList.remove('held');
-        window.jiraPlane.dragging(false, pausedMs);
+        // #15: main tears down at the projected end wall-time the renderer sends
+        // (re-seeds and the fast exit both move it — main no longer re-derives).
+        const endAtMs = exitAt
+          ? exitAt.t + (durS - exitAt.s) / EXIT_RATE * 1000
+          : startAt + pausedMs + durS * 1000;
+        window.jiraPlane.dragging(false, endAtMs);
         dragJustEnded = true;                    // cleared after the same-tick click
         setTimeout(() => { dragJustEnded = false; }, 0);
       });
@@ -574,7 +613,7 @@
         if (window.jiraPlane && (mode !== 'course' || wasDeviating)) {
           window.jiraPlane.flightState({ phase: mode, gx: rig.gx, gy: rig.gy,
             sy: rig.sy, az: rig.att.z, ax: rig.att.x, ay: rig.att.y,
-            pausedMs, offX: off.x, offY: off.y });
+            pausedMs, offX: off.x, offY: off.y, grabs, exit: exitAt });
           wasDeviating = mode !== 'course';
         }
       }

@@ -33,7 +33,6 @@ const flightQueue = [];
 let activeFlight = null;
 let activeFlightUrl = ''; // browse URL for the flight in the air (#9); '' = not clickable
 let teardownTimer = null;
-let flightStartAt = 0, flightDurMs = 0;
 
 function destroyActiveFlight() {
   (activeFlight || []).forEach((win) => { if (!win.isDestroyed()) win.destroy(); });
@@ -95,15 +94,14 @@ ipcMain.on('tag-hot', (e, hot) => {
 ipcMain.on('open-ticket', () => {
   if (activeFlightUrl) shell.openExternal(activeFlightUrl);
 });
-// Drag (#11): the flight clock pauses while the plane is held, so the fixed
-// teardown timer would kill the windows mid-drag. Cancel on grab; re-arm on
-// release with the accumulated pause shifting the schedule.
-ipcMain.on('dragging', (e, { on, pausedMs }) => {
+// Drag (#11/#15): cancel the teardown on grab; on release the renderer sends the
+// projected end wall-time (release re-seeds and the fast exit both change it —
+// main no longer re-derives the schedule from pausedMs).
+ipcMain.on('dragging', (e, { on, endAtMs }) => {
   clearTimeout(teardownTimer);
   teardownTimer = null;
   if (!on) {
-    teardownTimer = setTimeout(destroyActiveFlight,
-      flightStartAt + flightDurMs + pausedMs + 1000 - Date.now());
+    teardownTimer = setTimeout(destroyActiveFlight, endAtMs + 1000 - Date.now());
   }
 });
 // Relay (#11): deviation state goes to every other window of the active flight
@@ -197,7 +195,6 @@ function createFlight(event) {
     });
     return win;
   });
-  flightStartAt = start; flightDurMs = durMs;
   teardownTimer = setTimeout(destroyActiveFlight, START_LEAD_MS + durMs + 1000);
   return wins;
 }

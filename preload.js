@@ -5,8 +5,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('jiraPlane', {
   setTagHot: (hot) => ipcRenderer.send('tag-hot', hot),
   openTicket: () => ipcRenderer.send('open-ticket'),
-  // Drag (#11): pause/resume the flight schedule; pausedMs is the accumulated hold time
-  dragging: (on, pausedMs) => ipcRenderer.send('dragging', { on, pausedMs }),
+  // Drag (#11/#15): pause/resume the teardown schedule; endAtMs is the projected
+  // flight-end wall-clock time (re-seeds and the fast exit both move it)
+  dragging: (on, endAtMs) => ipcRenderer.send('dragging', { on, endAtMs }),
   // Multi-display drag (#11): the drag-owning window broadcasts rig state while
   // the plane deviates from course; other windows render from it.
   flightState: (state) => ipcRenderer.send('flight-state', state),
