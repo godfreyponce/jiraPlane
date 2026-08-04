@@ -166,10 +166,14 @@ async function collectRelevantComments() {
   }
 
   const results = [];
+  const cutoff = Date.now() - w * 60 * 1000;
   for (const [key, issue] of new Map([...mentionIssues, ...assigned])) {
     const summary = (issue.fields && issue.fields.summary) || '(no summary)';
     const onAssignedIssue = assigned.has(key);
     for (const c of await recentComments(key)) {
+      if (c.created && Date.parse(c.created) < cutoff) {
+        continue; // pre-existing history (a newly-assigned ticket's backlog) is not news
+      }
       const author = c.author || {};
       if (author.name === config.username || author.key === config.userKey) {
         continue; // your own comments are noise, not news
