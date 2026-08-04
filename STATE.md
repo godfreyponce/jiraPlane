@@ -1,10 +1,10 @@
 ---
 glass: jiraplane
 status: in-progress
-last_worked_on: 2026-08-03
-next_action: "#9 — Clickable ticket link on the towed banner (owner green-lit 2026-08-03). No spec or plan yet — start with /plan-ticket 9. The ticket has an open design question (generous hitbox vs. hover-slows-plane) the owner must answer at plan review. (#7/#8 remain unlabeled — owner green-light needed.)"
-blocked_on: ""
-phase: "v1 shipped and accepted through #10: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+last_worked_on: 2026-08-04
+next_action: "No green-lit ticket. Owner filed #11 (draggable plane), #12 (above every app) and #13 (pre-existing comment flood) on 2026-08-04; those plus #7/#8 all await owner green-light + ready-for-agent before /plan-ticket. #13 is the smallest (≈2-line poller guard)."
+blocked_on: "owner green-light on the next ticket (#7/#8/#11/#12/#13)"
+phase: "v1 shipped and accepted through #9: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
@@ -51,3 +51,8 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
   even with `closable:false`). Overlays must call `releaseFromTilingWM()` after
   show. `enableLargerThanScreen: true` kills the separate macOS menu-bar-nudge
   constraint; plane.html's per-frame `flyY` re-pin still covers residual y offsets.
+- macOS never renders a CSS cursor for these overlay windows (the app is never
+  activated, the window never key), so hover affordances must live in the page —
+  the #9 tag "lifts" instead of showing a pointer. Bites any future hover/drag
+  work (#11). Also: hover state must be a per-frame hit-test, never
+  mouseenter/mouseleave — the tag outruns a stationary cursor and leave never fires.

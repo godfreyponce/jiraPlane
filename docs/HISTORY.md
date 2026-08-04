@@ -11,6 +11,36 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Clickable cargo tag — #9 (2026-08-04) — ACCEPTED & CLOSED; commit a2935fd
+
+Clicking the towed cargo tag mid-flight opens the ticket in the default browser; everywhere
+else stays click-through the whole time. Overlay windows now use
+`setIgnoreMouseEvents(true, { forward: true })` so the page receives mousemove while
+click-through; a new 7-line sandboxed `preload.js` bridges two IPC calls (`tag-hot`,
+`open-ticket`). The renderer hit-tests the last-known cursor against the tag rect + 24px
+`HIT_PAD` **every sim frame** — not mouseenter/mouseleave, because the tag (~175px/s)
+slides out from under a stationary cursor without ever firing leave, which would leave the
+window click-blocking. Arming is per-window via the IPC sender (composes with #6's
+one-overlay-per-display); `acceptFirstMouse: true` lets the first click reach the
+never-focused window. Main derives `<baseUrl>/browse/<issueKey>` itself and opens only its
+own `activeFlightUrl` — the renderer sends no payload. Digest flights (no issueKey),
+skywriter, missing-`.env`, and standalone browser previews all fall out inert via one
+`clickable` guard.
+
+Owner decisions: generous hitbox over hover-slows-plane (option b would rework the #6
+keyframe sync model — spun off as thinking behind #11); digest flights get no link. Gate-2
+addition: hover "lift" (slab `scale` 1.07 + deeper shadow, 150ms) because macOS never
+renders the CSS pointer cursor for this never-activated overlay — the standalone `scale`
+property composes with the keyframed twist transform.
+
+Verification: real-mouse pass by owner (hover, click → ticket opened, pass-through, feel);
+agent pass via CDP synthetic input against the live overlay (arm → pointer style + hot
+class, click → exactly one `/browse/PROJ-142` tab in the default browser, stationary-cursor
+disarm, skywriter inert sweep, headless standalone check). CDP can't prove the OS-level
+`forward: true` / `acceptFirstMouse` behavior — the owner's real mouse did.
+
+---
+
 ## Banner style picker + Skywriter — #10 (2026-08-03) — ACCEPTED & CLOSED; commits 60854af, 62e45cb
 
 Tray "Banner style" submenu (Cargo tag / Skywriter radios) persisted to a new gitignored
