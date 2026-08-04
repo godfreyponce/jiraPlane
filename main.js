@@ -1,4 +1,4 @@
-const { app, Tray, Menu, BrowserWindow, screen, nativeImage } = require('electron');
+const { app, Tray, Menu, BrowserWindow, screen, nativeImage, shell, ipcMain } = require('electron');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -31,6 +31,7 @@ function setBannerStyle(style) {
 
 const flightQueue = [];
 let activeFlight = null;
+let activeFlightUrl = ''; // browse URL for the flight in the air (#9); '' = not clickable
 
 function enqueueFlight(event) {
   flightQueue.push(event);
@@ -72,10 +73,23 @@ function releaseFromTilingWM(win, isPrimary, attempt = 0) {
   });
 }
 
+// Clickable tag (#9): the renderer arms/disarms its own window as the cursor
+// enters/leaves the tag's padded hitbox; a click while armed opens the ticket.
+// Main opens only the URL it derived itself — the renderer sends no payload.
+ipcMain.on('tag-hot', (e, hot) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!hot, { forward: true });
+});
+ipcMain.on('open-ticket', () => {
+  if (activeFlightUrl) shell.openExternal(activeFlightUrl);
+});
+
 // One continuous flight across the whole desktop: one overlay per display,
 // each rendering its slice of a single global path, synced to a shared
 // wall-clock start (issue #6).
 function createFlight(event) {
+  activeFlightUrl = event.issueKey && poller.config
+    ? `${poller.config.baseUrl}/browse/${event.issueKey}` : '';
   const displays = screen.getAllDisplays();
   const minX = Math.min(...displays.map((d) => d.bounds.x));
   const maxX = Math.max(...displays.map((d) => d.bounds.x + d.bounds.width));
@@ -108,11 +122,17 @@ function createFlight(event) {
       // the active screen's visible frame (the menu-bar nudge from the #6
       // gotcha, plus a cross-display jump when another display is active).
       enableLargerThanScreen: true,
+      // First click on this never-focused window must reach the page instead
+      // of being swallowed as a macOS activation click (#9).
+      acceptFirstMouse: true,
       show: false,
-      webPreferences: { contextIsolation: true, sandbox: true, autoplayPolicy: 'no-user-gesture-required' },
+      webPreferences: { contextIsolation: true, sandbox: true, autoplayPolicy: 'no-user-gesture-required',
+                        preload: path.join(__dirname, 'preload.js') },
     });
     win.setAlwaysOnTop(true, 'screen-saver');
-    win.setIgnoreMouseEvents(true);
+    // forward: click-through but the page still gets mousemove, so the
+    // renderer can hit-test the tag and arm the window (#9).
+    win.setIgnoreMouseEvents(true, { forward: true });
     // false + visibleOnFullScreen: keeps flights visible over full-screen apps
     // WITHOUT canJoinAllSpaces (which puts the window on no particular Space).
     win.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true });
@@ -121,6 +141,7 @@ function createFlight(event) {
         type: event.type,
         issueKey: event.issueKey,
         snippet: event.snippet,
+        url: activeFlightUrl,
         start: String(start),
         dur: String(durMs),
         minX: String(minX),

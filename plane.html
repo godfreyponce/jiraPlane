@@ -27,7 +27,9 @@
     margin: 0;
     overflow: hidden;
     background: transparent;
-    pointer-events: none; /* belt-and-suspenders with setIgnoreMouseEvents */
+    /* No pointer-events:none here: click-through is governed by
+       setIgnoreMouseEvents in main.js, and forwarded mousemove (#9) must
+       hit-test against the page to reach our window-level listeners. */
   }
 
   /* Flight rig: move (x, one-shot) > swoop (sine y) > bank (3D attitude, plane only).
@@ -174,7 +176,14 @@
          perspective: 800px;
          filter: drop-shadow(10px 14px 16px rgba(0,0,0,.45));
          transform-origin: calc(100% - 16px) 50%; /* pivot at the grommet */
-         will-change: transform; }
+         will-change: transform;
+         transition: filter .15s; }
+  /* Hover affordance (#9): macOS won't show a CSS pointer cursor for this
+     never-activated overlay window, so the tag itself signals clickability —
+     it lifts toward the viewer while the cursor is inside the hitbox. */
+  #tag.hot { filter: drop-shadow(14px 20px 22px rgba(0,0,0,.55)); }
+  #tag .slab { transition: scale .15s; }
+  #tag.hot .slab { scale: 1.07; }
   .slab {
     position: relative; transform-style: preserve-3d;
     animation: twist 7.5s ease-in-out var(--sync-delay, 0s) infinite alternate;
@@ -413,6 +422,34 @@
     let pos = null, vel = { x: 0, y: 0 }, pAnchor = null, pitch = 0;
     let last = performance.now();
 
+    /* ===== clickable tag (#9) =====
+       Browsers recompute hover only on real mouse movement, so a tag sliding
+       out from under a stationary cursor never fires mouseleave. The hot/cold
+       state is therefore driven by a per-frame hit-test in the sim loop:
+       last-known cursor (window mousemove — forwarded while click-through,
+       real while armed) vs. the tag's current rect + HIT_PAD. */
+    const ticketUrl = params.get('url') || '';
+    const clickable = !!ticketUrl && bannerStyle === 'cargo' && !!window.jiraPlane;
+    const HIT_PAD = 24; // generous hitbox, owner option (a) — a guess; tune by feel
+    let cursor = null, hot = false;
+    if (clickable) {
+      addEventListener('mousemove', (e) => { cursor = { x: e.clientX, y: e.clientY }; });
+      addEventListener('click', () => { if (hot) window.jiraPlane.openTicket(); });
+    }
+    function updateHot() {
+      if (!clickable) return;
+      const r = tagEl.getBoundingClientRect();
+      const inside = !!cursor && document.body.classList.contains('fly') &&
+        cursor.x > r.left - HIT_PAD && cursor.x < r.right + HIT_PAD &&
+        cursor.y > r.top - HIT_PAD && cursor.y < r.bottom + HIT_PAD;
+      if (inside !== hot) {
+        hot = inside;
+        window.jiraPlane.setTagHot(hot);
+        document.documentElement.style.cursor = hot ? 'pointer' : '';
+        tagEl.classList.toggle('hot', hot);
+      }
+    }
+
     function frame(now) {
       const dt = Math.min((now - last) / 1000, .032); last = now;
       // multi-display: hold the flight line at global flyY every frame — macOS
@@ -463,6 +500,7 @@
       const w = tagEl.offsetWidth, h = tagEl.offsetHeight;
       tagEl.style.transform =
         `translate(${pos.x - (w - GROMMET_INSET)}px, ${pos.y - h / 2}px) rotate(${pitch}deg)`;
+      updateHot();
       requestAnimationFrame(frame);
     }
     if (bannerStyle === 'skywriter') {
