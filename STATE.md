@@ -2,9 +2,9 @@
 glass: jiraplane
 status: in-progress
 last_worked_on: 2026-08-04
-next_action: "No green-lit ticket. #7 (Teams DM sink), #8 (coworker onboarding), #11 (draggable plane) and #12 (above every app) await owner green-light + ready-for-agent before /plan-ticket."
-blocked_on: "owner green-light on the next ticket (#7/#8/#11/#12)"
-phase: "v1 shipped and accepted through #13: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+next_action: "No green-lit ticket. #7 (Teams DM sink), #8 (coworker onboarding) and #11 (draggable plane) await owner green-light + ready-for-agent before /plan-ticket."
+blocked_on: "owner green-light on the next ticket (#7/#8/#11)"
+phase: "v1 shipped and accepted through #12: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
@@ -46,6 +46,9 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
 - Overlay windows need `'screen-saver'` level + `setVisibleOnAllWorkspaces(false, {visibleOnFullScreen: true})`
   or the plane won't appear over full-screen apps. (The old "canJoinAllSpaces
   drags windows" diagnosis was WRONG — the dragger was AeroSpace all along, #6.)
+  The level is asserted AFTER `setVisibleOnAllWorkspaces`, after `showInactive()`,
+  and after the AeroSpace release (#12) — it can be reset by any of them; keep
+  `setAlwaysOnTop` last at every re-stack point.
 - **AeroSpace** moves every new window to the focused monitor and fights any
   setBounds; no window style escapes its 0.21.3 heuristics (AXCloseButton exists
   even with `closable:false`). Overlays must call `releaseFromTilingWM()` after

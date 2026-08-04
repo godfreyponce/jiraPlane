@@ -11,6 +11,28 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Plane above every app — #12 (2026-08-04) — ACCEPTED & CLOSED; commit 68f5e81
+
+The owner saw a plain regular app window cover the plane despite the `'screen-saver'`
+level. Fix: re-assert `setAlwaysOnTop(true, 'screen-saver')` at every point that can
+re-stack the window — moved last in the creation sequence (after
+`setVisibleOnAllWorkspaces`, a documented level-reset vector in Electron), after
+`showInactive()`, and after the AeroSpace `move-node-to-monitor` release. No new level:
+screen-saver (1000) already beats regular windows (0), Dock (~20), and menu bar (~24)
+once it sticks. `main.js` only; `plane.html` untouched.
+
+The repro attempt did NOT reproduce: on unmodified code, a Swift
+`CGWindowListCopyWindowInfo` probe showed both overlays holding native layer 1000 for a
+full flight with a frontmost browser window on the line — so this landed as defensive
+hardening; the original sighting likely needs a trigger that run didn't hit (Space
+switch / AeroSpace timing). Accepted with that known. Verification was window-server
+layer sampling (`kCGWindowLayer` — native truth, unlike `isAlwaysOnTop()`, which reports
+Electron's own flag) because the terminal lacks Screen Recording permission for
+screenshots: post-fix, 46/46 samples at layer 1000 across 3 test flights, both displays,
+plus the owner's real flight pass.
+
+---
+
 ## Pre-existing comment flood guard — #13 (2026-08-04) — ACCEPTED & CLOSED; commit bbb8938
 
 `collectRelevantComments()` now skips comments created before the lookback window
