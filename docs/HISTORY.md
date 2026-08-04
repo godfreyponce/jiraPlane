@@ -11,6 +11,17 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Pre-existing comment flood guard — #13 (2026-08-04) — ACCEPTED & CLOSED; commit bbb8938
+
+`collectRelevantComments()` now skips comments created before the lookback window
+(now − LOOKBACK_MINUTES), so a newly-assigned ticket's comment backlog can never fly —
+only the `assigned` flight fires. Accepted trade: a mention in a comment older than the
+window (e.g. the app was closed for over 30 min) no longer fires either. Comments with a
+missing `created` fall through to the seen-set dedup. Built without a plan file —
+owner-approved protocol skip for a 4-line change.
+
+---
+
 ## Clickable cargo tag — #9 (2026-08-04) — ACCEPTED & CLOSED; commit a2935fd
 
 Clicking the towed cargo tag mid-flight opens the ticket in the default browser; everywhere

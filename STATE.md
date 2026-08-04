@@ -2,9 +2,9 @@
 glass: jiraplane
 status: in-progress
 last_worked_on: 2026-08-04
-next_action: "No green-lit ticket. Owner filed #11 (draggable plane), #12 (above every app) and #13 (pre-existing comment flood) on 2026-08-04; those plus #7/#8 all await owner green-light + ready-for-agent before /plan-ticket. #13 is the smallest (≈2-line poller guard)."
-blocked_on: "owner green-light on the next ticket (#7/#8/#11/#12/#13)"
-phase: "v1 shipped and accepted through #9: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+next_action: "No green-lit ticket. #7 (Teams DM sink), #8 (coworker onboarding), #11 (draggable plane) and #12 (above every app) await owner green-light + ready-for-agent before /plan-ticket."
+blocked_on: "owner green-light on the next ticket (#7/#8/#11/#12)"
+phase: "v1 shipped and accepted through #13: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
