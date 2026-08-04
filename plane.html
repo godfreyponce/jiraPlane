@@ -32,23 +32,14 @@
        hit-test against the page to reach our window-level listeners. */
   }
 
-  /* Flight rig: move (x, one-shot) > swoop (sine y) > bank (3D attitude, plane only).
+  /* Flight rig: move (x) > swoop (sine y) > bank (3D attitude, plane only).
      Banner rides on swoop, NOT bank, so it stays level and readable.
-     All animations start paused with a --sync-delay phase shift; body.fly
-     launches them at the shared start instant so per-display windows agree. */
+     #11: the move/swoop/bank keyframes are replaced by the per-frame JS
+     flight sim below; streaks/twist/puff still run on CSS with --sync-delay. */
   .move {
     position: fixed;
-    top: 32vh;             /* multi-display flights override per-frame from flyY */
+    top: 32vh;
     left: 0;
-    animation: move var(--fly-duration) linear var(--sync-delay, 0s) both;
-    animation-play-state: paused;
-  }
-  body.fly .move { animation-play-state: running; }
-  @keyframes move {
-    from { transform: translateX(var(--sx, -194px)); }
-    /* 400px exit: the towed tag trails the anchor by rope(64) + tag width, so
-       the whole banner clears the screen before the animation ends (#6) */
-    to   { transform: translateX(var(--ex, calc(100vw + 400px))); }
   }
 
   .swoop {
@@ -56,65 +47,10 @@
     align-items: center;
     gap: 6px;
     perspective: 900px;
-    animation: swoop calc(var(--fly-duration) / 2) linear var(--sync-delay, 0s) infinite;
-    animation-play-state: paused;
-  }
-  body.fly .swoop { animation-play-state: running; }
-  /* True sine, sampled every 5%, played linear: y = 44px * cos(2*pi*p) */
-  @keyframes swoop {
-    0%   { transform: translateY(44px); }
-    5%   { transform: translateY(41.8px); }
-    10%  { transform: translateY(35.6px); }
-    15%  { transform: translateY(25.9px); }
-    20%  { transform: translateY(13.6px); }
-    25%  { transform: translateY(0px); }
-    30%  { transform: translateY(-13.6px); }
-    35%  { transform: translateY(-25.9px); }
-    40%  { transform: translateY(-35.6px); }
-    45%  { transform: translateY(-41.8px); }
-    50%  { transform: translateY(-44px); }
-    55%  { transform: translateY(-41.8px); }
-    60%  { transform: translateY(-35.6px); }
-    65%  { transform: translateY(-25.9px); }
-    70%  { transform: translateY(-13.6px); }
-    75%  { transform: translateY(0px); }
-    80%  { transform: translateY(13.6px); }
-    85%  { transform: translateY(25.9px); }
-    90%  { transform: translateY(35.6px); }
-    95%  { transform: translateY(41.8px); }
-    100% { transform: translateY(44px); }
   }
 
-  /* Attitude proportional to climb/dive rate:
-     rotateZ = -14deg*sin(2*pi*p), rotateX = 5deg + 16deg*sin, rotateY = -10deg*sin */
   .bank {
     transform-style: preserve-3d;
-    animation: bank calc(var(--fly-duration) / 2) linear var(--sync-delay, 0s) infinite;
-    animation-play-state: paused;
-  }
-  body.fly .bank { animation-play-state: running; }
-  @keyframes bank {
-    0%   { transform: rotateZ(0deg)     rotateX(5deg)    rotateY(0deg); }
-    5%   { transform: rotateZ(-4.3deg)  rotateX(9.9deg)  rotateY(-3.1deg); }
-    10%  { transform: rotateZ(-8.2deg)  rotateX(14.4deg) rotateY(-5.9deg); }
-    15%  { transform: rotateZ(-11.3deg) rotateX(17.9deg) rotateY(-8.1deg); }
-    20%  { transform: rotateZ(-13.3deg) rotateX(20.2deg) rotateY(-9.5deg); }
-    25%  { transform: rotateZ(-14deg)   rotateX(21deg)   rotateY(-10deg); }
-    30%  { transform: rotateZ(-13.3deg) rotateX(20.2deg) rotateY(-9.5deg); }
-    35%  { transform: rotateZ(-11.3deg) rotateX(17.9deg) rotateY(-8.1deg); }
-    40%  { transform: rotateZ(-8.2deg)  rotateX(14.4deg) rotateY(-5.9deg); }
-    45%  { transform: rotateZ(-4.3deg)  rotateX(9.9deg)  rotateY(-3.1deg); }
-    50%  { transform: rotateZ(0deg)     rotateX(5deg)    rotateY(0deg); }
-    55%  { transform: rotateZ(4.3deg)   rotateX(0.1deg)  rotateY(3.1deg); }
-    60%  { transform: rotateZ(8.2deg)   rotateX(-4.4deg) rotateY(5.9deg); }
-    65%  { transform: rotateZ(11.3deg)  rotateX(-7.9deg) rotateY(8.1deg); }
-    70%  { transform: rotateZ(13.3deg)  rotateX(-10.2deg) rotateY(9.5deg); }
-    75%  { transform: rotateZ(14deg)    rotateX(-11deg)  rotateY(10deg); }
-    80%  { transform: rotateZ(13.3deg)  rotateX(-10.2deg) rotateY(9.5deg); }
-    85%  { transform: rotateZ(11.3deg)  rotateX(-7.9deg) rotateY(8.1deg); }
-    90%  { transform: rotateZ(8.2deg)   rotateX(-4.4deg) rotateY(5.9deg); }
-    95%  { transform: rotateZ(4.3deg)   rotateX(0.1deg)  rotateY(3.1deg); }
-    100% { transform: rotateZ(0deg)     rotateX(5deg)    rotateY(0deg); }
   }
 
   /* B2 wide cream glider: 3 faces, spine (fold line) at y=52 in model space */
@@ -314,19 +250,77 @@
     // to local via window.screenX/screenY. Standalone (no params): fly now.
     const moveEl = document.querySelector('.move');
     const startAt = +params.get('start') || Date.now();
-    const flyY = params.has('flyY') ? +params.get('flyY') : null;
     if (params.has('dur')) {
       document.documentElement.style.setProperty(
         '--fly-duration', +params.get('dur') / 1000 + 's');
     }
-    function launch() {
-      const root = document.documentElement.style;
-      if (params.has('minX')) {
-        // same margins as the single-screen keyframes: -110% entry, +400px exit
-        root.setProperty('--sx',
-          +params.get('minX') - 1.1 * moveEl.offsetWidth - window.screenX + 'px');
-        root.setProperty('--ex', +params.get('maxX') + 400 - window.screenX + 'px');
+
+    // ===== flight sim (#11): motion is a pure function of flight-time s =====
+    const swoopEl = document.querySelector('.swoop');
+    const bankEl  = document.querySelector('.bank');
+    const durS = params.has('dur') ? +params.get('dur') / 1000 : 10;
+    const multi = params.has('minX');
+    const ox = () => (multi ? window.screenX : 0);   // global → local, per frame
+    const oy = () => (multi ? window.screenY : 0);
+    // course endpoints in global px — same numbers the old --sx/--ex computed
+    const fromX = (multi ? +params.get('minX') : 0) - 1.1 * moveEl.offsetWidth;
+    const toX   = (multi ? +params.get('maxX') : innerWidth) + 400;
+    const lineY = multi ? +params.get('flyY') : innerHeight * 0.32;
+
+    function courseX(s) { return fromX + (s / durS) * (toX - fromX); }
+    function swoopY(s)  { return 44 * Math.cos(2 * Math.PI * s / (durS / 2)); }
+    function attitude(s) {
+      const w = Math.sin(2 * Math.PI * s / (durS / 2));
+      return { z: -14 * w, x: 5 + 16 * w, y: -10 * w };
+    }
+
+    // flight clock: freezes while held (#11 owner decision), pause shifts the schedule
+    let pausedMs = 0, heldSince = null;
+    function flightS() {
+      const t = heldSince ?? Date.now();
+      return Math.min(durS, Math.max(0, (t - startAt - pausedMs) / 1000));
+    }
+
+    // deviation from course: (0,0) in clean flight; cursor-driven while held;
+    // spring-recovered after release.
+    let mode = 'course';                       // 'course' | 'drag' | 'recover'
+    let off = { x: 0, y: 0 }, offV = { x: 0, y: 0 };
+    let target = { x: 0, y: 0 };               // recovery target for off
+    // Recovery spring: owner's Round-1 picks from the #11 prototype, judged by
+    // feel like the pendulum's G/C/L — don't re-derive.
+    const K = 55, D = 10;                      // stiffness 1/s², damping 1/s
+    let grabOff = { x: 0, y: 0 };              // cursor→rig offset, set at grab
+    const cursorG = () => ({ x: cursor.x + ox(), y: cursor.y + oy() });
+
+    function renderRig(gx, gyLine, sy, att) {  // global rig origin + swoop + attitude
+      moveEl.style.top = gyLine - oy() + 'px';
+      moveEl.style.transform = `translateX(${gx - ox()}px)`;
+      swoopEl.style.transform = `translateY(${sy}px)`;
+      bankEl.style.transform =
+        `rotateZ(${att.z}deg) rotateX(${att.x}deg) rotateY(${att.y}deg)`;
+    }
+
+    function stepFlight(dt) {
+      const s = flightS();
+      if (mode === 'drag') {
+        off.x = (cursorG().x + grabOff.x) - courseX(s);
+        off.y = (cursorG().y + grabOff.y) - lineY;
+      } else if (mode === 'recover') {
+        offV.x += (-K * (off.x - target.x) - D * offV.x) * dt;
+        offV.y += (-K * (off.y - target.y) - D * offV.y) * dt;
+        off.x += offV.x * dt; off.y += offV.y * dt;
+        // REJOIN_EPS = 1 (px, px/s): snap threshold, a guess — invisible at that scale
+        if (Math.hypot(off.x - target.x, off.y - target.y) < 1 &&
+            Math.hypot(offV.x, offV.y) < 1) {
+          off = { ...target }; offV = { x: 0, y: 0 }; mode = 'course';
+        }
       }
+      renderRig(courseX(s) + off.x, lineY + off.y, swoopY(s), attitude(s));
+    }
+
+    function launch() {
+      // --sx/--ex are gone (#11): the sim's fromX/toX carry the course now
+      const root = document.documentElement.style;
       root.setProperty('--sync-delay', startAt - Date.now() + 'ms');
       if (bannerStyle === 'skywriter') layoutSkywriter();
       document.body.classList.add('fly');
@@ -450,12 +444,18 @@
       }
     }
 
+    // #11: one loop for both banner styles. stepFlight moves the rig (and
+    // re-pins top every frame — macOS nudges overlay windows below the menu
+    // bar by differing per-display amounts, and AeroSpace can shift frames
+    // mid-flight, #6); the pendulum + hit-test only exist for the cargo tag.
     function frame(now) {
       const dt = Math.min((now - last) / 1000, .032); last = now;
-      // multi-display: hold the flight line at global flyY every frame — macOS
-      // nudges overlay windows below the menu bar by differing per-display
-      // amounts, so a static top would misalign the slices at the seam
-      if (flyY !== null) moveEl.style.top = flyY - window.screenY + 'px';
+      stepFlight(dt);
+      if (bannerStyle === 'cargo') stepPendulum(dt);
+      requestAnimationFrame(frame);
+    }
+
+    function stepPendulum(dt) {
       const a  = anchorEl.getBoundingClientRect();
       const ax = a.left + a.width / 2, ay = a.top + a.height / 2;
 
@@ -501,19 +501,8 @@
       tagEl.style.transform =
         `translate(${pos.x - (w - GROMMET_INSET)}px, ${pos.y - h / 2}px) rotate(${pitch}deg)`;
       updateHot();
-      requestAnimationFrame(frame);
     }
-    if (bannerStyle === 'skywriter') {
-      // No pendulum, but the per-frame flyY re-pin still serves the plane itself:
-      // macOS nudges overlay windows below the menu bar by differing per-display
-      // amounts, and AeroSpace can shift frames mid-flight (#6).
-      (function repin() {
-        if (flyY !== null) moveEl.style.top = flyY - window.screenY + 'px';
-        requestAnimationFrame(repin);
-      })();
-    } else {
-      requestAnimationFrame(frame);
-    }
+    requestAnimationFrame(frame);
   </script>
 </body>
 </html>
