@@ -37,8 +37,9 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
 ## Gotchas (things that would still bite you today)
 
 - `.env` holds real work-Jira secrets copied from `JiraAlerts/.env` (gitignored) — never
-  commit or quote values. Jira PAT **expires 2027-01-16**. Since #7 it also holds
-  `TEAMS_WEBHOOK_URL` (optional — unset means plane only, no DMs). `PLANE=0` (#8) is
+  commit or quote values. The Jira PAT's expiry date is tracked locally, not here.
+  Since #7 it also holds `TEAMS_WEBHOOK_URL` (optional — unset means plane only, no
+  DMs). `PLANE=0` (#8) is
   the mirror opt-out: DMs only, no overlay. `.env.example` holds the placeholder set.
 - Since #7 the app is the single Jira watcher — quitting it stops the Teams DMs too,
   and "Pause polling" pauses both outputs. Always-on comes from the `com.jiraplane.app`
