@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="610" height="30" viewBox="0 0 610 30" role="img"
+     aria-label="Manila tag caption: your desktop is the sky. the plane flies above every app, the Dock, and the menu bar.">
+  <!-- Caption element: the product's own manila cargo tag (plane.html palette). -->
+  <defs>
+    <linearGradient id="manila" x1="0" y1="0" x2="1" y2="0.27">
+      <stop offset="0" stop-color="#eddfb4"/>
+      <stop offset="1" stop-color="#d6c592"/>
+    </linearGradient>
+  </defs>
+  <polygon points="0,0 595,0 610,15 595,30 0,30" fill="url(#manila)"/>
+  <text x="12" y="20" font-family="'Marker Felt','Bradley Hand','Comic Sans MS',cursive"
+        font-size="13" fill="#3a3226">your desktop is the sky. the plane flies above every app, the Dock, and the menu bar.</text>
+  <circle cx="600" cy="15" r="4"   fill="#8b8d94"/>
+  <circle cx="600" cy="15" r="3.2" fill="#d8dbe0"/>
+  <circle cx="600" cy="15" r="2"   fill="#2c3444"/>
+</svg>
