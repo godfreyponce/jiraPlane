@@ -53,6 +53,9 @@ function buildConfig() {
     // Teams DM sink (#7): optional — empty string disables the sink entirely.
     teamsWebhookUrl: env.TEAMS_WEBHOOK_URL || '',
     snippetChars: parseInt(env.SNIPPET_CHARS || '280', 10),
+    // Overlay sink (#8): optional the same way the Teams sink is — PLANE=0
+    // means Teams DMs only, no flying plane.
+    plane: env.PLANE !== '0',
     statePath: path.join(__dirname, 'state.json'),
   };
 }

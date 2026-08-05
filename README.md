@@ -25,11 +25,13 @@ npm start        # plane icon lands in the menu bar; "Test flight" fires a fake 
 ```
 
 Config lives in `.env` (gitignored): `JIRA_BASE_URL`, `JIRA_PAT` (a Data Center personal
-access token), `JIRA_USERNAME`, `JIRA_USER_KEY`. Two optional extras:
+access token), `JIRA_USERNAME`, `JIRA_USER_KEY`. Optional extras:
 
 - `TEAMS_WEBHOOK_URL` — a Teams Workflows webhook (the same value JiraAlerts uses). When
   set, every event also lands as a Teams DM; unset means plane only, no DMs.
 - `SNIPPET_CHARS` — caps the comment snippet in DMs (default 280).
+- `PLANE=0` — turns off the flying plane; events still go to Teams if the webhook
+  is set. Unset (the default) means the plane flies.
 
 "Pause polling" in the tray pauses both outputs — no planes and no DMs until resumed.
 

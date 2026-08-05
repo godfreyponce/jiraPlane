@@ -212,8 +212,10 @@ function createFlight(event) {
 // reassigned — the plane deliberately skips that stream, #2) and every event
 // DMs. A DM failure is logged and dropped: state has already advanced, same
 // "a plane can't fail" model the poller documents — no retry, no re-fly.
+// PLANE=0 (#8) turns off the overlay sink the same way an unset
+// TEAMS_WEBHOOK_URL turns off the DM sink.
 function dispatchEvent(event) {
-  if (event.type !== 'reassigned') enqueueFlight(event);
+  if ((poller.config?.plane ?? true) && event.type !== 'reassigned') enqueueFlight(event);
   teams.sendForEvent(event).catch((e) => console.error(`teams sink failed: ${e.message}`));
 }
 
