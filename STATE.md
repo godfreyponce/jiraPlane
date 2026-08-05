@@ -2,17 +2,18 @@
 glass: jiraplane
 status: in-progress
 last_worked_on: 2026-08-05
-next_action: "No green-lit ticket. #8 (coworker onboarding) and #14 (per-frame skywriter smoke) await owner green-light + ready-for-agent before /plan-ticket."
-blocked_on: "owner green-light on the next ticket (#8/#14)"
-phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+next_action: "No green-lit ticket. #14 (per-frame skywriter smoke) awaits owner green-light + ready-for-agent before /plan-ticket."
+blocked_on: "owner green-light on the next ticket (#14)"
+phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
 
 macOS menu-bar Electron app: flies an airplane across the screen (transparent, click-through
 overlay) when Jira activity involves the owner. Polls Jira DC directly every 60s with a Bearer
-PAT; independent of JiraAlerts. Repo: github.com/godfreyponce/jiraPlane (**PRIVATE** — wired to
-work Jira; don't flip public without the standing visibility process).
+PAT; independent of JiraAlerts. Repo: github.com/godfreyponce/jiraPlane (public since #8,
+2026-08-05 — MIT licensed; secrets only ever lived in gitignored `.env`, full history
+audited clean that day. Issues and docs stay written as-if-public, same as before).
 
 *Thin snapshot. `next_action` above names the ticket that is up now — start there.
 Archive: `docs/HISTORY.md`. Queue: GitHub Issues (`gh issue list`). Protocol: `AGENTS.md`.*
@@ -37,7 +38,8 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
 
 - `.env` holds real work-Jira secrets copied from `JiraAlerts/.env` (gitignored) — never
   commit or quote values. Jira PAT **expires 2027-01-16**. Since #7 it also holds
-  `TEAMS_WEBHOOK_URL` (optional — unset means plane only, no DMs).
+  `TEAMS_WEBHOOK_URL` (optional — unset means plane only, no DMs). `PLANE=0` (#8) is
+  the mirror opt-out: DMs only, no overlay. `.env.example` holds the placeholder set.
 - Since #7 the app is the single Jira watcher — quitting it stops the Teams DMs too,
   and "Pause polling" pauses both outputs. Always-on comes from the `com.jiraplane.app`
   LaunchAgent (`./scripts/install-login-launch.sh`); that login instance holds the

@@ -11,6 +11,27 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Coworker onboarding: plane as an optional add-on — #8 (2026-08-05) — ACCEPTED & CLOSED; commits f8b30a0..d63a5e4
+
+The plane is now something a coworker can adopt: clone, token, `cp .env.example .env`, done —
+and the repo went public (MIT) to make that possible. The overlay became optional the same way
+the Teams sink already was: `PLANE=0` mirrors an unset `TEAMS_WEBHOOK_URL`, so any output
+combination works from one `.env`. Built from the 2026-08-05 plan.
+
+- **`PLANE=0` opt-out (f8b30a0).** `poller.config.plane` (`env.PLANE !== '0'`) gates
+  `enqueueFlight` inside `dispatchEvent` — one line controls every flight, and Test flight
+  routes through the same funnel. `?? true` keeps a fresh clone (no `.env`, `config` null)
+  flying. Deliberate scope: with `PLANE=0` the "Banner style" submenu stays visible but moot.
+- **Onboarding docs (3496f1d).** `docs/ONBOARDING.md` walks zero → flying plane in the
+  JiraAlerts-onboarding voice (PAT creation, `/rest/api/2/myself` for username/user key,
+  output matrix, LaunchAgent, known quirks); `.env.example` carries placeholders for every
+  env var the code reads; README Setup leads with `cp .env.example .env`.
+- **Public-flip readiness (d63a5e4).** MIT LICENSE (portfolio convention), `package.json`
+  license field fixed (`"private": true` kept — npm guard, not repo visibility). Audit at
+  build time: zero hits for the work-Jira hostname/username/user key across all 52 commits;
+  `.env`/`state.json`/`settings.json` never committed; all 15 issues already read as-if-public.
+  Owner flipped visibility at acceptance per the standing process.
+
 ## Teams DM sink: one poller, two outputs — #7 (2026-08-05) — ACCEPTED & CLOSED; commits 9639019..6750aa6
 
 jiraPlane is now the single Jira watcher with two outputs: the plane overlay it always had,
