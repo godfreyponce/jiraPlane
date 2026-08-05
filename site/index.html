@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jiraPlane: a paper airplane that delivers your Jira news</title>
+<meta name="description" content="A paper airplane that flies across your screen when something happens to you in Jira. macOS menu-bar app.">
+<style>
+  /* Skin from plane.html itself: cream wing #f5efdd, shade #d8cdae, keel #b3a683,
+     manila tag #eddfb4 -> #d6c592, ink #3a3226, grommet navy #2c3444. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: linear-gradient(180deg, #fbf9f1, #f4efdf 480px, #f7f3e6);
+    color: #3a3226;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 17px; line-height: 1.65;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  a { color: #8a6d1f; text-decoration: none; font-weight: 500; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    max-width: 880px; margin: 0 auto; padding: 20px 24px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: #6b5f45;
+  }
+  header .name { font-weight: 700; color: #3a3226; }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding: 8px 24px 72px; }
+
+  .hero { text-align: center; padding: 24px 0 8px; }
+  .hero img { width: 100%; max-width: 720px; height: auto; }
+  .float { animation: float 6s ease-in-out infinite; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @media (prefers-reduced-motion: reduce) { .float { animation: none; } }
+
+  .lede { max-width: 640px; margin: 20px auto 0; text-align: center; font-size: 20px; }
+
+  /* section label: the product's own manila tag */
+  .tag {
+    display: inline-block; position: relative; margin: 64px 0 16px;
+    background: linear-gradient(105deg, #eddfb4, #d6c592);
+    padding: 6px 30px 7px 14px;
+    font: 400 15px/20px 'Marker Felt', 'Bradley Hand', 'Comic Sans MS', cursive;
+    clip-path: polygon(0% 0%, calc(100% - 16px) 0%, 100% 50%, calc(100% - 16px) 100%, 0% 100%);
+  }
+  .tag::after {
+    content: ''; position: absolute; right: 7px; top: 50%; margin-top: -4.5px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #2c3444 0 2.2px, #d8dbe0 2.2px 3.6px, #8b8d94 3.6px 4.5px);
+  }
+
+  p { margin-bottom: 14px; max-width: 640px; }
+  ul { margin: 0 0 14px 26px; max-width: 620px; }
+  li { margin-bottom: 8px; }
+
+  .shot {
+    background: #f4f1e6; border: 2px dashed #c4b88f; border-radius: 10px;
+    min-height: 240px; margin: 24px 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: ui-monospace, Menlo, monospace; color: #6b5f45; text-align: center; padding: 20px;
+  }
+  .shot .id { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #a3966f; margin-bottom: 8px; }
+  .shot .desc { font-size: 13px; max-width: 480px; line-height: 1.6; }
+
+  footer {
+    border-top: 1px solid #e0d8c0; margin-top: 72px; padding-top: 24px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: #6b5f45;
+  }
+  footer p { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="name">jiraPlane</span>
+  <span><a href="https://github.com/godfreyponce/jiraPlane">github repo</a></span>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="float"><img src="media/hero.svg" alt="A cream paper glider tows a big manila cargo tag reading: Assigned to you, PROJ-142: Fix login redirect."></div>
+    <p class="lede">A paper airplane that flies across your screen when something
+    happens to you in Jira.</p>
+  </div>
+
+  <!-- SHOT 01 (loop variant): same capture as the README's click-to-play mp4,
+       served here as an autoplay muted loop per the fleet clip policy. -->
+  <div class="shot">
+    <div class="id">SHOT 01, muted loop</div>
+    <div class="desc">The real thing: cargo-tag plane crossing an actual working desktop, both displays.</div>
+  </div>
+
+  <span class="tag">what it does</span>
+  <p>When a ticket lands on your plate, or a teammate mentions you, or someone
+  comments on a ticket you're working on, a paper plane crosses your screen
+  towing a manila tag with the news. Click the tag mid-flight and the ticket
+  opens. Ignore it and it flies away.</p>
+  <p>It checks Jira once a minute, and it's built to stay quiet: your first day
+  is not a plane storm, a burst of updates collapses into one flight, and your
+  own comments never count as news.</p>
+
+  <span class="tag">you can touch it</span>
+  <p>The plane flies above every app, the Dock, and the menu bar, but it never
+  gets in your way: clicks go straight through it to whatever you're working
+  in. The plane itself is the one thing you can catch.</p>
+  <ul>
+    <li>Grab it and drag it out of the way. It waits while you hold it, then
+    springs back and finishes the crossing from wherever you drop it.</li>
+    <li>Drop it near the edge it was flying toward and the flight ends early.</li>
+    <li>It tolerates three grabs. After the third it's done with you and bolts
+    for the exit at four times its cruising speed.</li>
+  </ul>
+
+  <span class="tag">where it came from</span>
+  <p>I already had <a href="https://github.com/godfreyponce/Jira-Alerts">Jira-Alerts</a>,
+  a script that DMs me on Teams when Jira needs me. Then I saw
+  <a href="https://www.instagram.com/p/DYqJoeVvI8c/">@conniecodes</a>' flying
+  paper airplane on Instagram and thought: what if I just wire it up and merge
+  the two together. So the plane took over the deliveries and the old script's
+  timer retired.</p>
+
+  <span class="tag">want one?</span>
+  <p>It runs on a Mac and needs a Jira Data Center account. I built it for my
+  own desk, but the
+  <a href="https://github.com/godfreyponce/jiraPlane/blob/main/docs/ONBOARDING.md">walkthrough</a>
+  takes you from zero in about 15 minutes, and none of it needs Jira admin
+  rights. The technical story lives in the
+  <a href="https://github.com/godfreyponce/jiraPlane">repo README</a>.</p>
+
+  <footer>
+    <p><a href="https://github.com/godfreyponce">github</a> /
+       <a href="https://www.linkedin.com/in/godfreyponce/">linkedin</a> /
+       <a href="https://godfreyponce.dev">personal website</a></p>
+    <p>MIT © 2026 Godfrey Ponce</p>
+  </footer>
+
+</div>
+
+</body>
+</html>
