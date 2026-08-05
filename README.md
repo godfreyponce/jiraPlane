@@ -24,8 +24,9 @@ npm install
 npm start        # plane icon lands in the menu bar; "Test flight" fires a fake plane
 ```
 
-Config lives in `.env` (gitignored): `JIRA_BASE_URL`, `JIRA_PAT` (a Data Center personal
-access token), `JIRA_USERNAME`, `JIRA_USER_KEY`. Optional extras:
+Config lives in `.env` (gitignored) — `cp .env.example .env` and fill in `JIRA_BASE_URL`,
+`JIRA_PAT` (a Data Center personal access token), `JIRA_USERNAME`, `JIRA_USER_KEY`.
+Optional extras:
 
 - `TEAMS_WEBHOOK_URL` — a Teams Workflows webhook (the same value JiraAlerts uses). When
   set, every event also lands as a Teams DM; unset means plane only, no DMs.
@@ -34,6 +35,8 @@ access token), `JIRA_USERNAME`, `JIRA_USER_KEY`. Optional extras:
   is set. Unset (the default) means the plane flies.
 
 "Pause polling" in the tray pauses both outputs — no planes and no DMs until resumed.
+
+New here? [docs/ONBOARDING.md](docs/ONBOARDING.md) walks the whole setup from zero.
 
 ### Start at login
 
