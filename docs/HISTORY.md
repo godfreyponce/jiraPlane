@@ -11,6 +11,41 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Teams DM sink: one poller, two outputs — #7 (2026-08-05) — ACCEPTED & CLOSED; commits 9639019..6750aa6
+
+jiraPlane is now the single Jira watcher with two outputs: the plane overlay it always had,
+plus the Teams DM that JiraAlerts used to send — including the reassigned-away stream, which
+is DM-only (the plane deliberately skips it, #2 upheld). The Power Automate flow is untouched:
+`teams.js` ports JiraAlerts' `cards.py` + `notifier.py` with the same six-field payload
+contract (`ticket`, `summary`, `headline`, `subline`, `snippet`, `url`) and verbatim
+headline/subline wording. With this accepted, the `com.jiraalerts.poll` LaunchAgent retires
+(owner runs the bootout; JiraAlerts repo untouched). Built from the 2026-08-04 plan.
+
+- **Poller enrichment (9639019).** Comment events carry author/body/commentId; a
+  `fetchAssignees` port detects tickets reassigned away (a ticket that left the active set
+  but is still yours — e.g. closed — is skipped, not a reassignment); digest events carry
+  per-stream counts. New optional config: `TEAMS_WEBHOOK_URL` (empty disables the sink),
+  `SNIPPET_CHARS` (default 280).
+- **`teams.js` sink (89dfabc).** One file: sanitize + wiki-markup snippet helpers, per-event
+  payload builders, webhook POST with a 30s timeout; any 2xx is success (Workflows returns
+  202 with an empty body). No DM retry: state advances before output — the poller's
+  "a plane can't fail" model — so a failed DM is logged and dropped.
+- **Dual dispatch + single-instance lock (b51127d).** `dispatchEvent` is the one funnel for
+  real polling and the tray test flight: every event DMs, everything except `reassigned`
+  flies. `requestSingleInstanceLock` makes a second `npm start` exit immediately, since the
+  login-launched instance now holds the slot.
+- **Login LaunchAgent + README (6750aa6).** `scripts/install-login-launch.sh` writes and
+  loads `com.jiraplane.app`, running the repo's real Electron binary with the repo as
+  argument — not `app.setLoginItemSettings` (registers bare Electron.app for unpackaged
+  apps) and not the `node_modules/.bin` shim (a Node script; launchd's PATH has no Homebrew
+  node). `KeepAlive.SuccessfulExit=false`: crash restarts, tray-Quit stays quit. README
+  covers the env keys, installer/uninstall, the dev-instance lock note, and the JiraAlerts
+  retirement commands.
+
+Deviations from JiraAlerts flagged at review: the flood valve is jiraPlane's
+`MAX_EVENTS_PER_CYCLE` (default 3), not JiraAlerts' 10; reassigned events count toward the
+valve though they never fly solo; "Pause polling" now pauses DMs too — one engine.
+
 ## Drag scrubs flight progress + three-grab fast exit — #15 (2026-08-04) — ACCEPTED & CLOSED; commits 3b08fcd..486a212
 
 Releasing a dragged plane now re-seeds flight progress from the drop point — drop it back

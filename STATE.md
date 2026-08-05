@@ -1,10 +1,10 @@
 ---
 glass: jiraplane
 status: in-progress
-last_worked_on: 2026-08-04
-next_action: "No green-lit ticket. #7 (Teams DM sink), #8 (coworker onboarding) and #14 (per-frame skywriter smoke) await owner green-light + ready-for-agent before /plan-ticket."
-blocked_on: "owner green-light on the next ticket (#7/#8/#14)"
-phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+last_worked_on: 2026-08-05
+next_action: "No green-lit ticket. #8 (coworker onboarding) and #14 (per-frame skywriter smoke) await owner green-light + ready-for-agent before /plan-ticket."
+blocked_on: "owner green-light on the next ticket (#8/#14)"
+phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
@@ -36,7 +36,14 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
 ## Gotchas (things that would still bite you today)
 
 - `.env` holds real work-Jira secrets copied from `JiraAlerts/.env` (gitignored) — never
-  commit or quote values. Jira PAT **expires 2027-01-16**.
+  commit or quote values. Jira PAT **expires 2027-01-16**. Since #7 it also holds
+  `TEAMS_WEBHOOK_URL` (optional — unset means plane only, no DMs).
+- Since #7 the app is the single Jira watcher — quitting it stops the Teams DMs too,
+  and "Pause polling" pauses both outputs. Always-on comes from the `com.jiraplane.app`
+  LaunchAgent (`./scripts/install-login-launch.sh`); that login instance holds the
+  single-instance lock, so tray-Quit it before a dev `npm start` and re-run the
+  installer (or re-login) when done. DM failures are logged and dropped — state
+  advances before output, so there is no retry and no re-fly.
 - `state.json` is the app's dedup state (gitignored) — NOT related to STATE.md. Delete/reset
   it to re-trigger the silent seed.
 - `settings.json` (gitignored) holds user prefs — currently the banner style (#10). Separate
