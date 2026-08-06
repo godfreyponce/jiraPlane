@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="688" height="270" viewBox="0 0 688 270" role="img"
      aria-label="A cream paper glider tows a big manila cargo tag reading: Assigned to you, PROJ-142: Fix login redirect. Tagline: It flies across your screen when Jira needs you.">
   <!-- Baked from the product's own geometry and palette (plane.html):
-       wing/keel clip-paths, streaks, rope, ruled manila tag, grommet.
-       Proportions per the owner's real capture 2026-08-05: the tag is big
-       relative to the plane. Not AI art. -->
+       the three glider faces are the wing/keel clip-paths projected through
+       the flight rig's fold (rotateX ±80), bank attitude (w=0.25) and 900px
+       perspective; the rope runs tail anchor to tag grommet like the pendulum
+       sim's does. Proportions per the owner's real capture 2026-08-05: the
+       tag is big relative to the plane. Not AI art. -->
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fbf9f1"/>
@@ -25,20 +27,21 @@
   <rect x="0" y="0" width="688" height="270" rx="6" fill="url(#sky)"/>
 
   <g transform="translate(24,44)">
-    <!-- glider: the B2 wide cream glider's three faces -->
-    <g transform="translate(450,14) rotate(-4 85 40)">
+    <!-- glider: the B2 wide cream glider's three faces, far wing then keel
+         then near wing (the sim's painter order) -->
+    <g transform="translate(450,-4)">
       <g fill="#cfc5a5" opacity="0.55">
-        <rect x="-130" y="15" width="110" height="3" rx="1.5"/>
-        <rect x="-114" y="27" width="82"  height="3" rx="1.5"/>
-        <rect x="-124" y="39" width="96"  height="3" rx="1.5"/>
+        <rect x="-130" y="38" width="110" height="3" rx="1.5"/>
+        <rect x="-114" y="47" width="82"  height="3" rx="1.5"/>
+        <rect x="-124" y="55" width="96"  height="3" rx="1.5"/>
       </g>
-      <polygon points="170,52 0,-0.8 0,52" fill="#f5efdd" stroke="#d8cdae" stroke-width="1"/>
-      <polygon points="170,30 0,30 51,56.5" fill="#d8cdae"/>
-      <polygon points="170,46 0,46 51,64" fill="#b3a683"/>
+      <polygon points="171.0,46.1 9.7,55.0 1.2,57.6"   fill="#f5efdd"/>
+      <polygon points="170.9,45.1 1.1,56.6 52.7,71.0"  fill="#b3a683"/>
+      <polygon points="171.0,46.1 -10.0,35.1 1.2,57.6" fill="#d8cdae"/>
     </g>
 
-    <!-- rope, bowing slack -->
-    <path d="M488,72 Q440,100 394,96" fill="none" stroke="#cfc5a5" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- rope, bowing slack: tail anchor to the tag's grommet -->
+    <path d="M449.9,47.7 Q404,88 357.8,84.9" fill="none" stroke="#cfc5a5" stroke-width="2.5" stroke-linecap="round"/>
 
     <!-- the cargo tag: ruled manila, marker handwriting, grommet -->
     <g transform="translate(34,58) rotate(-3 170 35)" filter="url(#tagshadow)">
