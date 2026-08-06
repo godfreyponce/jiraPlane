@@ -11,6 +11,31 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Test flights announce themselves in Teams — #23 (2026-08-06) — ACCEPTED & CLOSED; commit 8be11ee
+
+Test flights keep firing both sinks (owner decision 2026-08-06: the two-output fork should be
+smoke-testable in one click), so the DM now says what it is. `teams.js` gains `markAsTest` —
+`[TEST]` prefix on the ticket field plus a test subline — riding inside the flow's fixed
+six-field layout, since a seventh field would be silently dropped. `main.js` sets `test: true`
+on the tray/`TEST_FLIGHT` event only; real poller events never carry the field, and the overlay
+ignores it (`createFlight` reads only `issueKey`). `TEAMS_WEBHOOK_URL= npm start` is the
+documented escape hatch for iterating on visuals silently. Built from the 2026-08-06 plan.
+
+- **Verification (all three runs seen, not claimed).** Run A: `TEST_FLIGHT=1` → DM with
+  `[TEST] PROJ-142` + test subline. Run B: `TEAMS_WEBHOOK_URL=` → no DM, no error. Run C:
+  a genuine `assigned` event → plane flew and the real ticket's DM arrived unmarked.
+- **Run C repro trick (proved out, reusable).** `cycle()` re-reads `state.json` every cycle
+  (`poller.js:239`), so deleting one key from `assignees` while the app runs makes the next
+  cycle fire a genuine `assigned` event for a ticket you already own — no Jira write, event
+  observable within 60s. The poller re-adding the key confirms consumption.
+- **Mystery resolved benignly.** The build-session scare (owner assigned a real ticket, saw
+  no plane, poller already caught up) was almost certainly the event firing while no app
+  instance ran: Run C proved real events fly and DM correctly.
+- **#24 spun out during gate 2.** The plane flew but stayed on the focused display — the
+  LaunchAgent (since #7) runs without `/opt/homebrew/bin` on PATH, so the AeroSpace release
+  ENOENTs and latches off, undoing #6's multi-display behavior under the login instance.
+  Root-caused live (`launchctl print` showed the default PATH) and filed with fix directions.
+
 ## Coworker onboarding: plane as an optional add-on — #8 (2026-08-05) — ACCEPTED & CLOSED; commits f8b30a0..d63a5e4
 
 The plane is now something a coworker can adopt: clone, token, `cp .env.example .env`, done —
