@@ -2,10 +2,10 @@
 
 This walks you from zero → a paper plane flying across your screen when Jira
 activity involves you. You need a Mac, a Jira Data Center account, Node.js, and
-about 15 minutes — 30 if you also want Teams DMs. Nothing here requires Jira
+about 15 to 30 mins if you also want Teams DMs. Nothing here requires Jira
 admin rights.
 
-Each person runs their own copy: your clone, your Jira token, optionally your
+Each person runs their own copy: so your clone, your Jira token, optionally your
 own Teams webhook. No shared infrastructure; nobody can see anyone else's tickets.
 
 ## 1. Clone and install
