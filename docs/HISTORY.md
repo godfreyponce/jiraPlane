@@ -11,6 +11,25 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Multi-display flight restored under the LaunchAgent — #24 (2026-08-06) — ACCEPTED & CLOSED; commit 860fd56
+
+The #23 gate-2 spin-out, closed same-day. launchd's default PATH (`/usr/bin:/bin:/usr/sbin:/sbin`)
+has no Homebrew, so the login instance's `execFile('aerospace')` ENOENTed on the first flight and
+latched `aerospaceMissing` for the process lifetime — every overlay piled onto the focused display,
+silently undoing #6. Fix (owner-picked option 1): `AEROSPACE_BIN` resolved once at module load from
+the known install locations (`/opt/homebrew/bin`, `/usr/local/bin`), bare-name fallback so a machine
+genuinely without AeroSpace (#8 coworkers) still latches exactly as before. Plist/installer untouched.
+
+- **Verification (agent, monitor placement seen, not claimed).** The terminal lacked Screen
+  Recording + Accessibility TCC, so flights were verified via 1s sampling of
+  `aerospace list-windows --format '%{window-id} … %{monitor-id}'`: dev run and LaunchAgent run
+  both held one overlay on monitor 1 and one on monitor 2 for the full ~24s flight.
+  `launchctl print` confirmed the LaunchAgent still ran the default PATH. Owner flew and accepted.
+- **Reusable trick: firing TEST_FLIGHT under the login instance without a tray click.**
+  `launchctl setenv TEST_FLIGHT 1 && launchctl kickstart -k gui/$UID/com.jiraplane.app`, then
+  `unsetenv` + another `kickstart -k` to restore steady state. Sends one [TEST] DM (#23), as a
+  tray test flight would.
+
 ## Test flights announce themselves in Teams — #23 (2026-08-06) — ACCEPTED & CLOSED; commit 8be11ee
 
 Test flights keep firing both sinks (owner decision 2026-08-06: the two-output fork should be
