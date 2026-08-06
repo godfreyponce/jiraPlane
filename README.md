@@ -13,10 +13,7 @@ me on Teams when Jira needs me. Then I saw
 Instagram and thought: what if I just wire it up and merge the two together. So
 the plane took over the Teams DMs and the old script's timer retired.
 
-<!-- SHOT 01, click-to-play mp4: the real thing. Cargo-tag plane crossing an
-     actual working desktop, both displays, whoosh audio. Fake ticket data
-     through the real pipeline (Jira-Alerts capture protocol). Owner mints the
-     user-attachments URL at PR review; paste it on its own line here. -->
+<p align="center"><img src="docs/media/flight.gif" alt="Phone video of the real thing: the plane tows its cargo tag across the MacBook screen, hands off between displays, and glides across the external monitor."></p>
 
 <p align="center"><img src="docs/media/tag-sky.svg" alt="Manila tag caption: your desktop is the sky. the plane flies above every app, the Dock, and the menu bar."></p>
 
