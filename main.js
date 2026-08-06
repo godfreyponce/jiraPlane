@@ -74,12 +74,17 @@ function flyNext() {
 // The one working recipe: move the window's node to its own monitor via the
 // aerospace CLI; AeroSpace then restores the frame to where we put it.
 // 'main'/'secondary' covers 1–2 monitor setups. No-op if AeroSpace is absent.
+// launchd's default PATH has no Homebrew (#24) — resolve the binary once so
+// the LaunchAgent instance finds it; bare fallback keeps genuine-absence ENOENT.
+const AEROSPACE_BIN =
+  ['/opt/homebrew/bin/aerospace', '/usr/local/bin/aerospace'].find((p) => fs.existsSync(p)) ||
+  'aerospace';
 let aerospaceMissing = false;
 function releaseFromTilingWM(win, isPrimary, attempt = 0) {
   if (aerospaceMissing || win.isDestroyed()) return;
   const windowId = win.getMediaSourceId().split(':')[1];
   const target = isPrimary ? 'main' : 'secondary';
-  execFile('aerospace', ['move-node-to-monitor', '--window-id', windowId, target], (err) => {
+  execFile(AEROSPACE_BIN, ['move-node-to-monitor', '--window-id', windowId, target], (err) => {
     if (!err) {
       // AeroSpace just re-homed the window node; make sure the level survived (#12).
       if (!win.isDestroyed()) win.setAlwaysOnTop(true, 'screen-saver');
