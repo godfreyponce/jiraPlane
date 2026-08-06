@@ -8,7 +8,7 @@ that: the tray, the knobs, and the two files the app writes.
 The plane icon in the menu bar is the whole UI:
 
 - **Test flight** fires a fake plane (PROJ-142, "Fix login redirect") without
-  touching Jira. If a Teams webhook is set, it sends a test DM too.
+  touching Jira. If a Teams webhook is set, it sends a [TEST]-marked DM too.
 - **Banner style** picks Cargo tag or Skywriter. The choice persists across
   restarts.
 - **Pause polling** pauses both outputs. No planes and no DMs until resumed.
