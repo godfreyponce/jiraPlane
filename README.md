@@ -49,9 +49,7 @@ except where it isn't:
 - It tolerates three grabs per flight. On the third release it stops responding
   to the cursor and bolts for the exit at four times cruise speed.
 
-<!-- SHOT 03, click-to-play mp4: grab, drag, release. The spring-back at the
-     drop height, then the third grab and the fast exit. Owner mints the
-     user-attachments URL at PR review; paste it on its own line here. -->
+https://github.com/user-attachments/assets/c45c1f18-71c9-471e-9c67-ee3946005ff7
 
 <p align="center"><img src="docs/media/tag-grabs.svg" alt="Manila tag caption: three grabs, then it's done with you"></p>
 
@@ -63,9 +61,7 @@ air-drag feel, all tuned by hand on feel sliders.
 There's a second banner style in the tray: Skywriter writes the message as smoke
 letters along the flight path, laid down the moment the tail crosses each one.
 
-<!-- SHOT 02, gif or mp4: Skywriter flight. Smoke letters condensing along the
-     swoop, glowing then drifting up. Owner mints the user-attachments URL at
-     PR review; paste it on its own line here. -->
+https://github.com/user-attachments/assets/038435b2-f935-4080-83bd-ff11265509f1
 
 ## Get your own
 
