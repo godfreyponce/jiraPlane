@@ -19,8 +19,7 @@ npm install
 ## 2. Create a Jira Personal Access Token
 
 Jira → your avatar → **Profile → Personal Access Tokens → Create token**. Name
-it, set an expiry, copy the token. Write the expiry date somewhere you'll see
-it — when the token dies, the app goes silent with no error you'll ever notice.
+it, set an expiry, copy the token. Write the expiry date somewhere you'll remember it because when the token dies, the app goes silent with no error you'll ever notice.
 
 ## 3. Find your username and user key
 
