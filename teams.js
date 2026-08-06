@@ -95,10 +95,25 @@ function payloadForEvent(ev) {
   }
 }
 
+// A test event still reaches this sink by design (#23): the tray's "Test flight"
+// and TEST_FLIGHT=1 both go through dispatchEvent, so the one-poller-two-outputs
+// fork (#7) stays smoke-testable in one click. The DM therefore has to say so.
+// The flow's six-field layout is fixed, so the marker rides inside fields the
+// flow already renders — a seventh field would be silently dropped. Nothing here
+// is sanitized (payload() ran first), so keep these literals free of quotes and
+// backslashes.
+function markAsTest(body) {
+  body.ticket = `[TEST] ${body.ticket}`;
+  body.subline = body.subline
+    ? `${body.subline} Sent by a jiraPlane test flight — not a real Jira event.`
+    : 'Sent by a jiraPlane test flight — not a real Jira event.';
+}
+
 async function sendForEvent(ev) {
   if (!config || !config.teamsWebhookUrl) return;
   const body = payloadForEvent(ev);
   if (!body) return;
+  if (ev.test) markAsTest(body);
   const resp = await fetch(config.teamsWebhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

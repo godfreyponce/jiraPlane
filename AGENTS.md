@@ -69,6 +69,8 @@ There is no test suite for v1 and none planned — **verify = run the app.**
   `MAX_EVENTS_PER_CYCLE=0 npm start` exercises the flood-valve digest; self-triggered Jira
   activity (comment on/mention yourself on your own ticket) exercises polling. Standalone
   `plane.html?...` in a browser checks layout without Electron.
+  A test flight also sends a real (but [TEST]-marked) Teams DM (#23) — prefix the run with
+  `TEAMS_WEBHOOK_URL=` to iterate on visuals silently.
 - At gate 2, report what you actually ran and what you actually saw — never a claim that
   "it works" without having flown it. Visual behavior the owner must judge (feel, seams,
   timing) stays the owner's pass; your run is evidence, not acceptance.

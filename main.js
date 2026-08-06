@@ -241,11 +241,21 @@ function startPolling() {
   setInterval(tick, poller.config.pollSeconds * 1000);
 }
 
+// Test flight drives the same dispatchEvent fork a real poll does, so it fires
+// BOTH sinks: the plane flies and a real Teams DM goes out. That is deliberate
+// (#23, owner decision 2026-08-06) — the two-output design should be
+// smoke-testable in one click — and `test: true` makes teams.js mark the DM
+// [TEST] so a fake PROJ-142 can't be misread as real Jira activity. Real poller
+// events never carry the field, so their DMs are untouched.
+// To iterate on overlay visuals without writing to Teams, suppress the sink for
+// that run: `TEAMS_WEBHOOK_URL= TEST_FLIGHT=1 npm start` (a shell var beats .env,
+// poller.js:33, and an empty webhook URL makes sendForEvent a no-op).
 function testFlight() {
   dispatchEvent({
     type: 'assigned',
     issueKey: 'PROJ-142',
     snippet: 'Fix login redirect',
+    test: true,
   });
 }
 
