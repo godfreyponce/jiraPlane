@@ -53,10 +53,13 @@ const flightQueue = [];
 let activeFlight = null;
 let activeFlightUrl = ''; // browse URL for the flight in the air (#9); '' = not clickable
 let teardownTimer = null;
+let startTimer = null;    // #21 gated-start backstop; cleared on teardown
 let activeRows = [];  // one inner array of windows per row (#28)
 let rowEndAt = [];    // projected teardown wall-time per row, index-aligned
 
 function destroyActiveFlight() {
+  clearTimeout(startTimer);
+  startTimer = null;
   (activeFlight || []).forEach((win) => { if (!win.isDestroyed()) win.destroy(); });
   activeRows = [];
   rowEndAt = [];
@@ -176,7 +179,16 @@ function createFlight(event) {
     ? `${poller.config.baseUrl}/browse/${event.issueKey}` : '';
   const displays = flyOn === 'main' ? [screen.getPrimaryDisplay()] : screen.getAllDisplays();
   const primary = screen.getPrimaryDisplay();
-  const start = Date.now() + START_LEAD_MS;
+  const createdAt = Date.now();
+  // #21: with one physical display AeroSpace has nowhere wrong to put an
+  // overlay, so the query-string start stays byte-for-byte. With more, the
+  // release (measured 500–725ms, worst case ~1.5s of retries) races the
+  // 700ms lead — so the start is withheld and delivered over IPC once every
+  // overlay's release has settled.
+  const gated = screen.getAllDisplays().length > 1;
+  const start = gated ? null : createdAt + START_LEAD_MS;
+  let unsettled = 0;
+  let onSettled; // undefined when ungated → releaseFromTilingWM's no-op default
   const rows = partitionRows(displays).map((rowDisplays) => {
     const minX = Math.min(...rowDisplays.map((d) => d.bounds.x));
     const maxX = Math.max(...rowDisplays.map((d) => d.bounds.x + d.bounds.width));
@@ -241,7 +253,7 @@ function createFlight(event) {
           issueKey: event.issueKey,
           snippet: event.snippet,
           url: activeFlightUrl,
-          start: String(start),
+          ...(gated ? {} : { start: String(start) }),
           dur: String(row.durMs),
           minX: String(row.minX),
           maxX: String(row.maxX),
@@ -260,15 +272,38 @@ function createFlight(event) {
       win.once('ready-to-show', () => {
         win.showInactive();
         win.setAlwaysOnTop(true, 'screen-saver'); // showing can re-stack (#12)
-        releaseFromTilingWM(win, d.id === primary.id);
+        releaseFromTilingWM(win, d.id === primary.id, 0, onSettled);
       });
       return win;
     });
     activeRows.push(rowWins);
-    rowEndAt.push(start + row.durMs);
+    rowEndAt.push(gated ? Infinity : start + row.durMs); // gated: filled at finalize
     wins.push(...rowWins);
   });
-  teardownTimer = setTimeout(destroyActiveFlight, Math.max(...rowEndAt) + 1000 - Date.now());
+  if (gated) {
+    let finalized = false;
+    const finalizeStart = () => {
+      if (finalized) return;
+      finalized = true;
+      clearTimeout(startTimer);
+      startTimer = null;
+      // Never earlier than today's page-load lead; never later than the moment
+      // every overlay is confirmed placed (entry is ~194px offscreen, so a
+      // few ms of IPC latency never shows on screen).
+      const startAt = Math.max(createdAt + START_LEAD_MS, Date.now());
+      rowEndAt = rows.map((row) => startAt + row.durMs);
+      teardownTimer = setTimeout(destroyActiveFlight, Math.max(...rowEndAt) + 1000 - Date.now());
+      wins.forEach((w) => { if (!w.isDestroyed()) w.webContents.send('flight-start', startAt); });
+    };
+    unsettled = wins.length;
+    onSettled = () => { if (--unsettled === 0) finalizeStart(); };
+    // Backstop, per the ticket: derived from existing receipts only —
+    // START_LEAD_MS (page-load cover) + the full 5×300ms retry span. A window
+    // not settled by then is in the will-never-move regime: fly without it.
+    startTimer = setTimeout(finalizeStart, START_LEAD_MS + 5 * 300);
+  } else {
+    teardownTimer = setTimeout(destroyActiveFlight, Math.max(...rowEndAt) + 1000 - Date.now());
+  }
   return wins;
 }
 
