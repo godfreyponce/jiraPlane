@@ -1,10 +1,10 @@
 ---
 glass: jiraplane
 status: in-progress
-last_worked_on: 2026-08-06
-next_action: "#21 is next (agent-recommended, owner asked for the pick 2026-08-06): flight starts before overlays reach their displays — the 700ms start lead races AeroSpace's ~500-725ms release. Not yet green-lit: owner fills the template + adds ready-for-agent, then /plan-ticket #21."
+last_worked_on: 2026-08-10
+next_action: "#21 is next, still (agent-recommended, owner asked for the pick 2026-08-06; #27 jumped ahead of it and landed 2026-08-10): flight starts before overlays reach their displays — the 700ms start lead races AeroSpace's ~500-725ms release. Not yet green-lit: owner fills the template + adds ready-for-agent, then /plan-ticket #21."
 blocked_on: "#21 awaits the owner's ready-for-agent green-light (template + label)"
-phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State

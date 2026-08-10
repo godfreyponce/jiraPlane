@@ -11,6 +11,32 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## ONBOARDING step 3 stops failing silently — #27 (2026-08-10) — ACCEPTED & CLOSED; commit 7b2426e
+
+Doc-only. Found 2026-08-07 by the owner walking `ONBOARDING.md` as a coworker would: the step that
+has you curl `/rest/api/2/myself` used bare `curl -s`, which suppresses connection, DNS and TLS
+errors, so a wrong host produced an empty line rather than an error. The placeholder
+`https://jira.example.com` compounded it by inviting a find-replace of just `example`, leaving a
+plausible-looking hostname that isn't yours. The step also never said what success looked like.
+Fix: `-sS -i` (quiet meter, loud errors, status line visible), a `tr ',' '\n' | grep -Ei | head -4`
+filter that returns the four lines that matter, a stated success block, and three named failure
+tells. Placeholder is now `YOUR-JIRA-HOST` in the doc and `.env.example` alike — no TLD to strand.
+
+- **`head -4` is load-bearing, not decoration.** Jira DC's `/myself` includes `groups.items[]`
+  whose members carry their own `name`, and at least one serialises `self` first, so
+  `"name":"confluence-users"` survives the grep. Top-level `key`/`name` always precede `groups`,
+  so the cap is what keeps group names out. Don't remove it.
+- **HTTP/2 lowercases header names** (build-session finding, verified against the real Jira with a
+  deliberately bad token): the rejected-token tell arrives as `x-ausername: anonymous`, not
+  `X-AUSERNAME:`. The `grep -Ei` matches either way, but the doc now says so — a printed block the
+  reader can never match would have been a new silent-failure mode of its own.
+- **Three indirections rejected up front** (issue Constraints, from the session that found the bug):
+  `read`, `pbpaste`, and friends all keep the token out of shell history and all introduce a worse
+  silent failure. `read` inside a pasted block swallows the submit newline and yields an empty
+  token; `pbpaste` loses the token the moment the reader copies the command. Token stays inline.
+- **No `--connect-timeout`.** The partial-replace case can hang for a full connect timeout before
+  printing nothing, but `-sS` already makes it loud and there is no measured basis for a number.
+
 ## Multi-display flight restored under the LaunchAgent — #24 (2026-08-06) — ACCEPTED & CLOSED; commit 860fd56
 
 The #23 gate-2 spin-out, closed same-day. launchd's default PATH (`/usr/bin:/bin:/usr/sbin:/sbin`)
