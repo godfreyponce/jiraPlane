@@ -12,4 +12,7 @@ contextBridge.exposeInMainWorld('jiraPlane', {
   // the plane deviates from course; other windows render from it.
   flightState: (state) => ipcRenderer.send('flight-state', state),
   onFlightState: (cb) => ipcRenderer.on('flight-state', (e, state) => cb(state)),
+  // #21: flight start arrives over IPC once main confirms every overlay is on
+  // its intended display (multi-display Electron flights only).
+  onFlightStart: (cb) => ipcRenderer.on('flight-start', (e, startAt) => cb(startAt)),
 });

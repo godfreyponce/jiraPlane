@@ -259,7 +259,12 @@
     // the global span; this window renders its slice, mapping desktop coords
     // to local via window.screenX/screenY. Standalone (no params): fly now.
     const moveEl = document.querySelector('.move');
-    const startAt = +params.get('start') || Date.now();
+    // #21: for Electron multi-display flights main.js withholds `start` and
+    // sends it over IPC only after every overlay sits on its intended display.
+    // Until then startAt = Infinity pins flightS() at 0 — the rig sits at its
+    // offscreen entry point. Query-start and standalone pages fly as before.
+    let startAt = (params.has('start') || !window.jiraPlane)
+      ? (+params.get('start') || Date.now()) : Infinity;
     if (params.has('dur')) {
       document.documentElement.style.setProperty(
         '--fly-duration', +params.get('dur') / 1000 + 's');
@@ -379,7 +384,14 @@
       document.body.classList.add('fly');
       if (params.get('audio') !== '0') startAudio();
     }
-    setTimeout(launch, Math.max(0, startAt - Date.now()));
+    if (startAt === Infinity) {
+      window.jiraPlane.onFlightStart((t) => {
+        startAt = t;
+        setTimeout(launch, Math.max(0, startAt - Date.now()));
+      });
+    } else {
+      setTimeout(launch, Math.max(0, startAt - Date.now()));
+    }
 
     // Airy whoosh: noise -> bandpass -> gain envelope -> stereo pan across the room.
     // Entirely optional: any failure is swallowed so audio can never break the
