@@ -23,17 +23,40 @@ it, set an expiry, copy the token. Write the expiry date somewhere you'll rememb
 
 ## 3. Find your username and user key
 
-Your username is what you log in with. Your user key is internal and
-non-obvious; the easiest way to get it is to ask Jira who you are:
+Your username is what you log in with. Your user key is internal and non-obvious; the easiest way
+to get it is to ask Jira who you are. Replace both ALL-CAPS placeholders. `YOUR-JIRA-HOST` is the
+host you reach Jira at in the browser, no `https://` and no trailing slash:
 
 ```bash
-curl -s -H "Authorization: Bearer <your-PAT>" \
-  https://jira.example.com/rest/api/2/myself
+curl -sS -i -H "Authorization: Bearer YOUR-PAT" \
+  'https://YOUR-JIRA-HOST/rest/api/2/myself' \
+  | tr ',' '\n' | grep -Ei '^HTTP/|^x-ausername:|"(name|key)":' | head -4
 ```
 
-In the JSON response, `name` is your `JIRA_USERNAME` and `key` (something like
-`JIRAUSER12345`) is your `JIRA_USER_KEY`. Both matter for @mention detection —
-get either one wrong and mentions silently stop matching.
+Four lines back means it worked:
+
+```
+HTTP/1.1 200
+X-AUSERNAME: your-username
+"key":"JIRAUSER12345"
+"name":"your-username"
+```
+
+`name` is your `JIRA_USERNAME` and `key` is your `JIRA_USER_KEY`. Both matter for @mention
+detection — get either one wrong and mentions silently stop matching. (If your Jira speaks HTTP/2
+the first line reads `HTTP/2 200` and the header name comes back lowercase as `x-ausername:`. Same
+two lines, different spelling.)
+
+Anything else is one of three failures, and they look different on purpose:
+
+- **`401` with `x-ausername: anonymous`.** You reached Jira and it rejected your token. Go back to
+  step 2.
+- **`curl: (6) Could not resolve host` or `curl: (7) Failed to connect`.** You never reached Jira
+  at all. The host is wrong, not the token.
+- **`404`.** You reached a web server but not Jira's API. Check the host, including any path your
+  Jira sits under; some installs live at `https://host/jira`.
+
+If none of those match what you got, delete everything from `| tr` onward to see the raw response.
 
 ## 4. Pick your outputs
 
