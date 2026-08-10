@@ -11,6 +11,39 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Planes on every display, any arrangement — #28 rows engine + flyOn setting (2026-08-10) — ACCEPTED & CLOSED; commits bc68842, fdfbc3e, 7c52ca3
+
+The #6 engine drew one global path spanning all displays' x-range at the primary's flyY — right
+only for side-by-side arrangements; a stacked or mixed layout got dead air on some displays and
+no plane at all on others. `createFlight` now partitions displays into horizontal rows by
+y-interval overlap (a sorted interval-merge; total, so every display lands in exactly one row)
+and flies one continuous flight per row: per-row `minX/maxX/flyY/dur` and skywriter text bounds,
+one shared wall-clock start across rows, exactly one audio source (the leftmost window of the
+primary's row). The #11 flight-state relay and the #15 drag-release `endAtMs` re-arm are
+row-scoped — grabbing one row's plane leaves other rows on script, and the teardown timer always
+covers the latest-ending row. New `flyOn: "all" | "main"` pref (tray "Fly on" submenu, #10 radio
+pattern) rides settings.json through a merged `saveSettings()` so the banner and flyOn setters
+can't clobber each other's key; missing/unknown → `"all"`. `plane.html` untouched — it already
+renders purely from query params.
+
+- **Side-by-side is byte-for-byte** (the plan's hard constraint): a live-app param log on the
+  owner's arrangement produced `minX 0 / maxX 3432 / flyY 314 / dur 23006 / audio display 1 /
+  textX 91–1331` — identical to the pre-change formulas on the same bounds. One row containing
+  the primary reproduces the old numbers by construction.
+- **Row anchor (`ref`)**: `flyY` and skywriter bounds anchor to the primary on its row (today's
+  exact values), else the row's tallest display. Spreading a row's text budget across multiple
+  displays stays #20's question.
+- **Verification without eyes** (screencapture blocked — the terminal lacks Screen Recording TCC,
+  the same wall #24 hit): a temporary env-guarded param log (removed before commit) plus a
+  CGWindowList Swift sampler (owner/bounds/layer need no TCC). Stacked run: two rows, shared
+  start, flyY −734/314, durs 14366/12034, one audio source, per-row text bounds; teardown followed
+  the longer row. `flyOn=main`: one window, primary bounds only. Deleted settings.json: defaults,
+  no crash. Drag isolation between rows couldn't be automated (needs real drags AND eyes) — the
+  owner exercised it at accept.
+- **AeroSpace on stacked arrangements**: overlays occasionally got yanked to the wrong display for
+  ~2–4s before `releaseFromTilingWM`'s retry re-homed them — the #21 start-lead race, unchanged by
+  this ticket, just more visible stacked.
+
 ## ONBOARDING step 3 stops failing silently — #27 (2026-08-10) — ACCEPTED & CLOSED; commit 7b2426e
 
 Doc-only. Found 2026-08-07 by the owner walking `ONBOARDING.md` as a coworker would: the step that

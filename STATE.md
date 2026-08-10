@@ -2,9 +2,9 @@
 glass: jiraplane
 status: in-progress
 last_worked_on: 2026-08-10
-next_action: "#21 is next, still (agent-recommended, owner asked for the pick 2026-08-06; #27 jumped ahead of it and landed 2026-08-10): flight starts before overlays reach their displays — the 700ms start lead races AeroSpace's ~500-725ms release. Not yet green-lit: owner fills the template + adds ready-for-agent, then /plan-ticket #21."
+next_action: "#21 is next, still (agent-recommended, owner asked for the pick 2026-08-06; #27 and #28 jumped ahead of it and landed 2026-08-10): flight starts before overlays reach their displays — the 700ms start lead races AeroSpace's ~500-725ms release. Not yet green-lit: owner fills the template + adds ready-for-agent, then /plan-ticket #21. #28 made the race MORE visible on stacked arrangements (overlay briefly on the wrong display before the release re-homes it)."
 blocked_on: "#21 awaits the owner's ready-for-agent green-light (template + label)"
-phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10; #28 rows engine — one flight per display row + flyOn all|main setting 2026-08-10. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
@@ -49,7 +49,8 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
   advances before output, so there is no retry and no re-fly.
 - `state.json` is the app's dedup state (gitignored) — NOT related to STATE.md. Delete/reset
   it to re-trigger the silent seed.
-- `settings.json` (gitignored) holds user prefs — currently the banner style (#10). Separate
+- `settings.json` (gitignored) holds user prefs — the banner style (#10) and flyOn all|main
+  (#28), written together by `saveSettings()` so neither setter clobbers the other. Separate
   file from `state.json` precisely so resetting dedup state keeps the user's choice.
 - All visuals must stay in the single self-contained `plane.html` — UI iteration swaps that
   one file, nothing else.
@@ -78,3 +79,5 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
   re-arm-on-release — since #15 the re-arm uses the renderer-sent `endAtMs`: a release
   re-seeds the flight clock from the drop x (pausedMs can go negative), and the 3rd
   grab's release starts a 4× fast-exit clock, so main can't re-derive the schedule.
+  Since #28 flights are per display row (y-overlap partition): the relay and the endAtMs
+  re-arm are scoped to the sender's row, and teardown covers the latest-ending row.
