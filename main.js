@@ -112,20 +112,27 @@ ipcMain.on('tag-hot', (e, hot) => {
 ipcMain.on('open-ticket', () => {
   if (activeFlightUrl) shell.openExternal(activeFlightUrl);
 });
-// Drag (#11/#15): cancel the teardown on grab; on release the renderer sends the
-// projected end wall-time (release re-seeds and the fast exit both change it —
-// main no longer re-derives the schedule from pausedMs).
+// Drag (#11/#15, row-aware since #28): cancel the teardown on grab; on
+// release the renderer sends its row's projected end wall-time (re-seed and
+// fast exit both change it — main no longer re-derives the schedule from
+// pausedMs). Other rows keep their own schedule — the timer always covers
+// the latest-ending row.
 ipcMain.on('dragging', (e, { on, endAtMs }) => {
   clearTimeout(teardownTimer);
   teardownTimer = null;
   if (!on) {
-    teardownTimer = setTimeout(destroyActiveFlight, endAtMs + 1000 - Date.now());
+    const i = activeRows.findIndex((rowWins) =>
+      rowWins.some((w) => !w.isDestroyed() && w.webContents === e.sender));
+    if (i !== -1) rowEndAt[i] = endAtMs;
+    teardownTimer = setTimeout(destroyActiveFlight, Math.max(...rowEndAt) + 1000 - Date.now());
   }
 });
-// Relay (#11): deviation state goes to every other window of the active flight
-// so all displays render the same dragged/recovering plane.
+// Relay (#11, row-scoped since #28): deviation state goes to the other
+// windows of the sender's ROW — other rows' planes stay on script.
 ipcMain.on('flight-state', (e, state) => {
-  (activeFlight || []).forEach((win) => {
+  const row = activeRows.find((rowWins) =>
+    rowWins.some((w) => !w.isDestroyed() && w.webContents === e.sender)) || [];
+  row.forEach((win) => {
     if (!win.isDestroyed() && win.webContents !== e.sender)
       win.webContents.send('flight-state', state);
   });
