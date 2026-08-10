@@ -23,19 +23,30 @@ const START_LEAD_MS = 700;
 let tray = null;
 let pollingPaused = false;
 
-// Banner style picker (#10): persisted user pref, separate from state.json so
-// resetting dedup state never loses the choice. Any read failure → cargo.
+// Persisted user prefs (#10 bannerStyle, #28 flyOn): separate from state.json
+// so resetting dedup state never loses them. Any read failure → defaults.
 const SETTINGS_PATH = path.join(__dirname, 'settings.json');
 let bannerStyle = 'cargo';
+let flyOn = 'all'; // 'all' | 'main'; missing/unknown → 'all' (#28)
 try {
-  const saved = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8')).bannerStyle;
-  if (saved === 'skywriter') bannerStyle = saved;
-} catch { /* missing or invalid settings.json: keep cargo */ }
+  const saved = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+  if (saved.bannerStyle === 'skywriter') bannerStyle = saved.bannerStyle;
+  if (saved.flyOn === 'main') flyOn = saved.flyOn;
+} catch { /* missing or invalid settings.json: keep defaults */ }
+
+function saveSettings() {
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify({ bannerStyle, flyOn }, null, 2) + '\n');
+  tray.setContextMenu(buildMenu());
+}
 
 function setBannerStyle(style) {
   bannerStyle = style;
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify({ bannerStyle }, null, 2) + '\n');
-  tray.setContextMenu(buildMenu());
+  saveSettings();
+}
+
+function setFlyOn(mode) {
+  flyOn = mode;
+  saveSettings();
 }
 
 const flightQueue = [];
@@ -162,7 +173,7 @@ function partitionRows(displays) {
 function createFlight(event) {
   activeFlightUrl = event.issueKey && poller.config
     ? `${poller.config.baseUrl}/browse/${event.issueKey}` : '';
-  const displays = screen.getAllDisplays();
+  const displays = flyOn === 'main' ? [screen.getPrimaryDisplay()] : screen.getAllDisplays();
   const primary = screen.getPrimaryDisplay();
   const start = Date.now() + START_LEAD_MS;
   const rows = partitionRows(displays).map((rowDisplays) => {
@@ -321,6 +332,15 @@ function buildMenu() {
           click: () => setBannerStyle('cargo') },
         { label: 'Skywriter', type: 'radio', checked: bannerStyle === 'skywriter',
           click: () => setBannerStyle('skywriter') },
+      ],
+    },
+    {
+      label: 'Fly on',
+      submenu: [
+        { label: 'All displays', type: 'radio', checked: flyOn === 'all',
+          click: () => setFlyOn('all') },
+        { label: 'Main display', type: 'radio', checked: flyOn === 'main',
+          click: () => setFlyOn('main') },
       ],
     },
     { type: 'separator' },
