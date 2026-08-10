@@ -42,9 +42,13 @@ const flightQueue = [];
 let activeFlight = null;
 let activeFlightUrl = ''; // browse URL for the flight in the air (#9); '' = not clickable
 let teardownTimer = null;
+let activeRows = [];  // one inner array of windows per row (#28)
+let rowEndAt = [];    // projected teardown wall-time per row, index-aligned
 
 function destroyActiveFlight() {
   (activeFlight || []).forEach((win) => { if (!win.isDestroyed()) win.destroy(); });
+  activeRows = [];
+  rowEndAt = [];
 }
 
 function enqueueFlight(event) {
@@ -127,89 +131,125 @@ ipcMain.on('flight-state', (e, state) => {
   });
 });
 
-// One continuous flight across the whole desktop: one overlay per display,
-// each rendering its slice of a single global path, synced to a shared
-// wall-clock start (issue #6).
+// Rows engine (#28): displays whose [y, y+height) ranges intersect share a
+// horizontal row (union is transitive — a sorted interval-merge sweep). Every
+// display lands in exactly one row, so there is no "unpartitionable" case.
+function partitionRows(displays) {
+  const sorted = [...displays].sort((a, b) => a.bounds.y - b.bounds.y);
+  const rows = [];
+  for (const d of sorted) {
+    const last = rows[rows.length - 1];
+    if (last && d.bounds.y < last.yMax) {
+      last.displays.push(d);
+      last.yMax = Math.max(last.yMax, d.bounds.y + d.bounds.height);
+    } else {
+      rows.push({ displays: [d], yMax: d.bounds.y + d.bounds.height });
+    }
+  }
+  return rows.map((r) => r.displays);
+}
+
+// One continuous flight per row of displays (#28): one overlay per display,
+// each rendering its slice of its row's path, all rows synced to a shared
+// wall-clock start (issue #6's engine, partitioned per row).
 function createFlight(event) {
   activeFlightUrl = event.issueKey && poller.config
     ? `${poller.config.baseUrl}/browse/${event.issueKey}` : '';
   const displays = screen.getAllDisplays();
-  const minX = Math.min(...displays.map((d) => d.bounds.x));
-  const maxX = Math.max(...displays.map((d) => d.bounds.x + d.bounds.width));
   const primary = screen.getPrimaryDisplay();
-  // Global flight line: a third down the primary display, like the accepted
-  // single-screen look.
-  const flyY = Math.round(primary.bounds.y + primary.bounds.height * 0.32);
-  // Entry/exit margins mirror plane.html's rig: ~194px offscreen entry
-  // (-110% of the ~176px rig); 400px exit so the towed tag (rope 64px + tag
-  // ≤312px wide, pivoted 16px in) fully clears the screen before teardown.
-  const spanPx = maxX + 400 - (minX - 194);
-  const durMs = Math.round((spanPx / SPEED_PX_S) * 1000);
   const start = Date.now() + START_LEAD_MS;
-  const leftmost = displays.reduce((a, b) => (a.bounds.x <= b.bounds.x ? a : b));
-  const wins = displays.map((d) => {
-    const win = new BrowserWindow({
-      x: d.bounds.x,
-      y: d.bounds.y,
-      width: d.bounds.width,
-      height: d.bounds.height,
-      transparent: true,
-      frame: false,
-      hasShadow: false,
-      focusable: false,
-      skipTaskbar: true,
-      resizable: false,
-      movable: false,
-      fullscreenable: false,
-      // Without this, macOS constrains a display-sized borderless window into
-      // the active screen's visible frame (the menu-bar nudge from the #6
-      // gotcha, plus a cross-display jump when another display is active).
-      enableLargerThanScreen: true,
-      // First click on this never-focused window must reach the page instead
-      // of being swallowed as a macOS activation click (#9).
-      acceptFirstMouse: true,
-      show: false,
-      webPreferences: { contextIsolation: true, sandbox: true, autoplayPolicy: 'no-user-gesture-required',
-                        preload: path.join(__dirname, 'preload.js') },
-    });
-    // forward: click-through but the page still gets mousemove, so the
-    // renderer can hit-test the tag and arm the window (#9).
-    win.setIgnoreMouseEvents(true, { forward: true });
-    // false + visibleOnFullScreen: keeps flights visible over full-screen apps
-    // WITHOUT canJoinAllSpaces (which puts the window on no particular Space).
-    win.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true });
-    // Level goes LAST: setVisibleOnAllWorkspaces can reset the macOS window
-    // level, which let regular app windows cover the plane (#12). Re-asserted
-    // again after show and after the AeroSpace release below.
-    win.setAlwaysOnTop(true, 'screen-saver');
-    win.loadFile('plane.html', {
-      query: {
-        type: event.type,
-        issueKey: event.issueKey,
-        snippet: event.snippet,
-        url: activeFlightUrl,
-        start: String(start),
-        dur: String(durMs),
-        minX: String(minX),
-        maxX: String(maxX),
-        flyY: String(flyY),
-        audio: d.id === leftmost.id ? '1' : '0',
-        banner: bannerStyle,
-        // Skywriter text bounds (global px): 6%–88% of the primary display, the
-        // prototype's layout budget. main.js computes these because each overlay
-        // window only knows its own slice of the desktop.
-        textX0: String(Math.round(primary.bounds.x + primary.bounds.width * 0.06)),
-        textX1: String(Math.round(primary.bounds.x + primary.bounds.width * 0.88)),
-      },
-    });
-    win.once('ready-to-show', () => {
-      win.showInactive();
-      win.setAlwaysOnTop(true, 'screen-saver'); // showing can re-stack (#12)
-      releaseFromTilingWM(win, d.id === primary.id);
-    });
-    return win;
+  const rows = partitionRows(displays).map((rowDisplays) => {
+    const minX = Math.min(...rowDisplays.map((d) => d.bounds.x));
+    const maxX = Math.max(...rowDisplays.map((d) => d.bounds.x + d.bounds.width));
+    // Row flight line: 32% down the primary if it's in this row (the accepted
+    // look, unchanged), else 32% down the row's tallest display.
+    const ref = rowDisplays.find((d) => d.id === primary.id) ||
+      rowDisplays.reduce((a, b) => (a.bounds.height >= b.bounds.height ? a : b));
+    const flyY = Math.round(ref.bounds.y + ref.bounds.height * 0.32);
+    // Entry/exit margins mirror plane.html's rig: ~194px offscreen entry
+    // (-110% of the ~176px rig); 400px exit so the towed tag (rope 64px + tag
+    // ≤312px wide, pivoted 16px in) fully clears the screen before teardown.
+    const spanPx = maxX + 400 - (minX - 194);
+    const durMs = Math.round((spanPx / SPEED_PX_S) * 1000);
+    const leftmost = rowDisplays.reduce((a, b) => (a.bounds.x <= b.bounds.x ? a : b));
+    return { displays: rowDisplays, minX, maxX, flyY, durMs, leftmost, ref };
   });
-  teardownTimer = setTimeout(destroyActiveFlight, START_LEAD_MS + durMs + 1000);
+  // Exactly one audio source overall: the leftmost window of the primary's row.
+  const primaryRow = rows.find((r) => r.displays.some((d) => d.id === primary.id));
+  const audioDisplayId = primaryRow.leftmost.id;
+  activeRows = [];
+  rowEndAt = [];
+  const wins = [];
+  rows.forEach((row) => {
+    const rowWins = row.displays.map((d) => {
+      const win = new BrowserWindow({
+        x: d.bounds.x,
+        y: d.bounds.y,
+        width: d.bounds.width,
+        height: d.bounds.height,
+        transparent: true,
+        frame: false,
+        hasShadow: false,
+        focusable: false,
+        skipTaskbar: true,
+        resizable: false,
+        movable: false,
+        fullscreenable: false,
+        // Without this, macOS constrains a display-sized borderless window into
+        // the active screen's visible frame (the menu-bar nudge from the #6
+        // gotcha, plus a cross-display jump when another display is active).
+        enableLargerThanScreen: true,
+        // First click on this never-focused window must reach the page instead
+        // of being swallowed as a macOS activation click (#9).
+        acceptFirstMouse: true,
+        show: false,
+        webPreferences: { contextIsolation: true, sandbox: true, autoplayPolicy: 'no-user-gesture-required',
+                          preload: path.join(__dirname, 'preload.js') },
+      });
+      // forward: click-through but the page still gets mousemove, so the
+      // renderer can hit-test the tag and arm the window (#9).
+      win.setIgnoreMouseEvents(true, { forward: true });
+      // false + visibleOnFullScreen: keeps flights visible over full-screen apps
+      // WITHOUT canJoinAllSpaces (which puts the window on no particular Space).
+      win.setVisibleOnAllWorkspaces(false, { visibleOnFullScreen: true });
+      // Level goes LAST: setVisibleOnAllWorkspaces can reset the macOS window
+      // level, which let regular app windows cover the plane (#12). Re-asserted
+      // again after show and after the AeroSpace release below.
+      win.setAlwaysOnTop(true, 'screen-saver');
+      win.loadFile('plane.html', {
+        query: {
+          type: event.type,
+          issueKey: event.issueKey,
+          snippet: event.snippet,
+          url: activeFlightUrl,
+          start: String(start),
+          dur: String(row.durMs),
+          minX: String(row.minX),
+          maxX: String(row.maxX),
+          flyY: String(row.flyY),
+          audio: d.id === audioDisplayId ? '1' : '0',
+          banner: bannerStyle,
+          // Skywriter text bounds (global px): 6%–88% of the row's reference
+          // display — the primary on its row (today's exact values), the
+          // tallest display elsewhere. Spreading a row's budget across
+          // multiple displays stays issue #20's question. main.js computes
+          // these because each overlay window only knows its own slice.
+          textX0: String(Math.round(row.ref.bounds.x + row.ref.bounds.width * 0.06)),
+          textX1: String(Math.round(row.ref.bounds.x + row.ref.bounds.width * 0.88)),
+        },
+      });
+      win.once('ready-to-show', () => {
+        win.showInactive();
+        win.setAlwaysOnTop(true, 'screen-saver'); // showing can re-stack (#12)
+        releaseFromTilingWM(win, d.id === primary.id);
+      });
+      return win;
+    });
+    activeRows.push(rowWins);
+    rowEndAt.push(start + row.durMs);
+    wins.push(...rowWins);
+  });
+  teardownTimer = setTimeout(destroyActiveFlight, Math.max(...rowEndAt) + 1000 - Date.now());
   return wins;
 }
 
