@@ -2,9 +2,9 @@
 glass: jiraplane
 status: in-progress
 last_worked_on: 2026-08-10
-next_action: "#21 is next, still (agent-recommended, owner asked for the pick 2026-08-06; #27 and #28 jumped ahead of it and landed 2026-08-10): flight starts before overlays reach their displays — the 700ms start lead races AeroSpace's ~500-725ms release. Not yet green-lit: owner fills the template + adds ready-for-agent, then /plan-ticket #21. #28 made the race MORE visible on stacked arrangements (overlay briefly on the wrong display before the release re-homes it)."
-blocked_on: "#21 awaits the owner's ready-for-agent green-light (template + label)"
-phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10; #28 rows engine — one flight per display row + flyOn all|main setting 2026-08-10. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+next_action: "Owner picks and green-lights the next ticket (template + ready-for-agent, then /plan-ticket). Nothing in the queue is green-lit as of 2026-08-10. Newest capture: #31 (quit with a non-empty flight queue flies the rest of the queue before exiting — found during #21 verification). #17 (flight duration scales with desktop width) and #22 (display set snapshotted per flight) both touch the same start/teardown scheduling #21 just reworked."
+blocked_on: "next ticket awaits the owner's pick and ready-for-agent green-light"
+phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10; #28 rows engine — one flight per display row + flyOn all|main setting 2026-08-10; #21 flight start gated on overlay placement (release-settle IPC start) 2026-08-10. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
@@ -81,3 +81,11 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
   grab's release starts a 4× fast-exit clock, so main can't re-derive the schedule.
   Since #28 flights are per display row (y-overlap partition): the relay and the endAtMs
   re-arm are scoped to the sender's row, and teardown covers the latest-ending row.
+- Since #21, multi-display flights get NO `start` query param — the renderer holds the
+  sim at s=0 (startAt=Infinity) until main sends `flight-start` over IPC, after every
+  overlay's `releaseFromTilingWM` reports a terminal outcome (success, ENOENT, retries
+  exhausted; 2200ms backstop). `rowEndAt` is Infinity until that finalize, and the
+  teardown timer is armed there, not in createFlight. Single physical display and
+  standalone-browser pages keep the old query-string start byte-for-byte — don't "fix"
+  the missing param. Settle time is usually ~500ms (start stays createdAt+700) but was
+  measured at ~2s under a slow-AeroSpace episode; the gate absorbing that is the feature.

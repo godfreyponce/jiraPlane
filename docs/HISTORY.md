@@ -11,6 +11,39 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Flight start gated on overlay placement — #21 (2026-08-10) — ACCEPTED & CLOSED; commits 42413c1, 4564eb1, fa41b47
+
+The 700ms `START_LEAD_MS` raced AeroSpace's release: a flight could start while an overlay still
+sat on the wrong display (visibly so on stacked arrangements since #28). Now, with more than one
+physical display attached, `createFlight` withholds `start` from the query string; the renderer
+initialises `startAt = Infinity`, which pins `flightS()` at 0 — the rig waits at its ~194px
+offscreen entry point. `releaseFromTilingWM` gained an `onSettled` callback that fires exactly
+once per top-level call on every terminal path (success, ENOENT latch, retries exhausted, window
+destroyed — what the function *does* is unchanged), and when all overlays have settled main
+computes `start = max(createdAt + 700, now)`, fills `rowEndAt`, arms the teardown timer, and
+delivers the start over a new `flight-start` IPC channel. A 2200ms backstop
+(`START_LEAD_MS + 5×300ms`, both pre-existing receipted numbers) covers a hung CLI: the flight
+proceeds on whatever displays are correct. One physical display, or a standalone-browser
+`plane.html?...` page, keeps the query-string start byte-for-byte.
+
+- **Settled = the release's terminal outcome, not a bounds check.** AeroSpace snaps a window only
+  after it becomes visible, so a bounds check at show time can pass *before* the yank; the CLI
+  result is the only trustworthy signal. Gate scope keys off physical display count, not `flyOn` —
+  a `flyOn: main` flight on two monitors still has one yankable overlay.
+- **Instrumented 10-flight run (two displays, AeroSpace live)**: all 10 settled (`unsettled=0`,
+  releases OK on attempt 1, ~480–560ms), start held at the createdAt+700 floor — today's timing
+  kept when settles are fast. Every flight showed 1–2 *pre-start* samples of an overlay on the
+  wrong display (the bug, caught live, now hidden offscreen) and zero post-start misplacements
+  across ~2,390 bounds samples. An earlier same-day run caught a slow-AeroSpace episode: 8
+  consecutive flights settling at ~1985ms, correctly pushing the start to ~2s — with the fixed
+  lead all 8 would have started misplaced. Degradation paths verified: all-moves-fail flies at
+  retry exhaustion (~1.66s); no-AeroSpace ENOENT flies at exactly createdAt+700 on both the
+  latching and latched flight. Single-display path not machine-run (needed the external
+  unplugged); owner accepted.
+- **Fallout capture**: quitting with a non-empty flight queue flies the rest of the queue before
+  exiting (the `closed`→`flyNext` handler runs during quit) — pre-existing #1-era behavior,
+  surfaced by the 10-flight queue, filed as #31.
+
 ## Planes on every display, any arrangement — #28 rows engine + flyOn setting (2026-08-10) — ACCEPTED & CLOSED; commits bc68842, fdfbc3e, 7c52ca3
 
 The #6 engine drew one global path spanning all displays' x-range at the primary's flyY — right
