@@ -95,19 +95,20 @@ const AEROSPACE_BIN =
   ['/opt/homebrew/bin/aerospace', '/usr/local/bin/aerospace'].find((p) => fs.existsSync(p)) ||
   'aerospace';
 let aerospaceMissing = false;
-function releaseFromTilingWM(win, isPrimary, attempt = 0) {
-  if (aerospaceMissing || win.isDestroyed()) return;
+function releaseFromTilingWM(win, isPrimary, attempt = 0, onSettled = () => {}) {
+  if (aerospaceMissing || win.isDestroyed()) return onSettled();
   const windowId = win.getMediaSourceId().split(':')[1];
   const target = isPrimary ? 'main' : 'secondary';
   execFile(AEROSPACE_BIN, ['move-node-to-monitor', '--window-id', windowId, target], (err) => {
     if (!err) {
       // AeroSpace just re-homed the window node; make sure the level survived (#12).
       if (!win.isDestroyed()) win.setAlwaysOnTop(true, 'screen-saver');
-      return;
+      return onSettled();
     }
-    if (err.code === 'ENOENT') { aerospaceMissing = true; return; }
+    if (err.code === 'ENOENT') { aerospaceMissing = true; return onSettled(); }
     // Usually means AeroSpace hasn't detected the window yet — retry briefly.
-    if (attempt < 5) setTimeout(() => releaseFromTilingWM(win, isPrimary, attempt + 1), 300);
+    if (attempt < 5) return setTimeout(() => releaseFromTilingWM(win, isPrimary, attempt + 1, onSettled), 300);
+    onSettled(); // retries exhausted (#21): report so the gate can degrade, don't hang it
   });
 }
 
