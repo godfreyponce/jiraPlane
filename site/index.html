@@ -57,14 +57,11 @@
   ul { margin: 0 0 14px 26px; max-width: 620px; }
   li { margin-bottom: 8px; }
 
-  .shot {
-    background: #f4f1e6; border: 2px dashed #c4b88f; border-radius: 10px;
-    min-height: 240px; margin: 24px 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-family: ui-monospace, Menlo, monospace; color: #6b5f45; text-align: center; padding: 20px;
+  .shot { margin: 24px 0; text-align: center; }
+  .shot img {
+    width: 100%; max-width: 560px; height: auto;
+    border-radius: 10px; border: 1px solid #e0d8c0;
   }
-  .shot .id { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: #a3966f; margin-bottom: 8px; }
-  .shot .desc { font-size: 13px; max-width: 480px; line-height: 1.6; }
 
   footer {
     border-top: 1px solid #e0d8c0; margin-top: 72px; padding-top: 24px;
@@ -88,11 +85,10 @@
     happens to you in Jira.</p>
   </div>
 
-  <!-- SHOT 01 (loop variant): same capture as the README's click-to-play mp4,
-       served here as an autoplay muted loop per the fleet clip policy. -->
+  <!-- SHOT 01: the same capture the README opens with, looping here per the
+       fleet clip policy. -->
   <div class="shot">
-    <div class="id">SHOT 01, muted loop</div>
-    <div class="desc">The real thing: cargo-tag plane crossing an actual working desktop, both displays.</div>
+    <img src="media/flight.gif" alt="Phone video of the real thing: the plane tows its cargo tag across the MacBook screen, hands off between displays, and glides across the external monitor.">
   </div>
 
   <span class="tag">what it does</span>
