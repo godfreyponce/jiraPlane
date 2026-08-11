@@ -11,6 +11,29 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Quit with a non-empty flight queue exits promptly — #31 (2026-08-11) — ACCEPTED & CLOSED; commit 4506d75
+
+`app.quit()` destroys the active flight's windows; each window's `'closed'` handler decrements
+the open counter, and the last one called `flyNext()` — which created the next queued flight's
+windows mid-quit, so quit stalled until the whole queue drained (found during #21's instrumented
+10-flight verification run; pre-existing #1-era behavior). The fix is a `quitting` flag set on
+`before-quit`, checked first in `flyNext` — quit's window destruction then finds nothing
+re-creating windows and Electron exits normally. Queued flights are discarded, not persisted:
+the Teams DM (if any) already went out at dispatch time and the poller advances state before
+output, so only the visual is dropped — which is what quitting asks for. The active flight is
+cut off mid-air, not flown out (letting it finish would keep the app alive up to ~26s after
+Quit, most of the original complaint).
+
+- **Verified single-display** (3-flight burst, Quit mid-first-flight): baseline showed two fresh
+  planes taking off *after* Quit and the prompt back 13.9s later; with the fix, exit in 48ms and
+  no new flight. Normal draining unchanged: 2 flights each flew their full ~13.7s schedule
+  back-to-back, app stayed resident, and an empty-queue Quit exited in 69ms. No human at the
+  tray that session — the repro was driven by a temporary env-gated driver calling
+  `testFlight()`/`app.quit()` (the tray items' exact functions), removed before commit.
+- Baseline logs also showed stale teardown timers cross-firing into successor flights during the
+  drain (flight 1's timer destroyed flight 2 mid-quit) — same mechanism, gone with the guard,
+  nothing separate to fix.
+
 ## Flight start gated on overlay placement — #21 (2026-08-10) — ACCEPTED & CLOSED; commits 42413c1, 4564eb1, fa41b47
 
 The 700ms `START_LEAD_MS` raced AeroSpace's release: a flight could start while an overlay still
