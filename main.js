@@ -57,6 +57,14 @@ let startTimer = null;    // #21 gated-start backstop; cleared on teardown
 let activeRows = [];  // one inner array of windows per row (#28)
 let rowEndAt = [];    // projected teardown wall-time per row, index-aligned
 
+// Quit (#31): app.quit() destroys the active flight's windows, whose 'closed'
+// handlers would launch the next queued flight mid-quit and keep the app
+// alive until the whole queue drained. Queued flights are discarded — the
+// Teams DM (if any) already went out at dispatch time and state advanced
+// before output, so only the visual is dropped.
+let quitting = false;
+app.on('before-quit', () => { quitting = true; });
+
 function destroyActiveFlight() {
   clearTimeout(startTimer);
   startTimer = null;
@@ -71,7 +79,7 @@ function enqueueFlight(event) {
 }
 
 function flyNext() {
-  if (activeFlight || flightQueue.length === 0) return;
+  if (quitting || activeFlight || flightQueue.length === 0) return;
   const event = flightQueue.shift();
   const wins = createFlight(event);
   activeFlight = wins;
