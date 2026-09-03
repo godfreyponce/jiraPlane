@@ -11,6 +11,22 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Login installer works on a fresh Mac — #33 (2026-09-03) — ACCEPTED & CLOSED; commit 9d9c667
+
+`scripts/install-login-launch.sh` wrote the plist with `cat > "$PLIST"` into
+`~/Library/LaunchAgents/` and never created the folder. A fresh macOS account has no such
+folder until some app makes one, so the redirect failed on line 19 and `set -e` aborted before
+`launchctl bootstrap`. Found onboarding the first coworker (`npm install` and Test flight had
+already worked); never seen on the owner's Mac because other apps had created the folder years
+ago. Fix is one line before the heredoc: `mkdir -p "$(dirname "$PLIST")"`. Hotfix landed
+straight from the working tree at owner direction — no plan file.
+
+- **Verified** by running the script with `HOME` pointed at an empty scratch dir: exit 0, folder
+  created, plist written. Gotcha for anyone repeating that: the script bootouts/bootstraps by
+  label, so the scratch run re-registered the owner's real login agent from the scratch plist.
+  Re-running the installer normally restored it (path back to the real LaunchAgents, state
+  running). Don't use a fake HOME as a repro without re-running the installer afterwards.
+
 ## Quit with a non-empty flight queue exits promptly — #31 (2026-08-11) — ACCEPTED & CLOSED; commit 4506d75
 
 `app.quit()` destroys the active flight's windows; each window's `'closed'` handler decrements
