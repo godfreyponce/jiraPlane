@@ -50,6 +50,7 @@ function setFlyOn(mode) {
 }
 
 const flightQueue = [];
+let lastFlown = null; // last real event the plane flew (#34); in-memory, null until one flies
 let activeFlight = null;
 let activeFlightUrl = ''; // browse URL for the flight in the air (#9); '' = not clickable
 let teardownTimer = null;
@@ -322,7 +323,15 @@ function createFlight(event) {
 // PLANE=0 (#8) turns off the overlay sink the same way an unset
 // TEAMS_WEBHOOK_URL turns off the DM sink.
 function dispatchEvent(event) {
-  if ((poller.config?.plane ?? true) && event.type !== 'reassigned') enqueueFlight(event);
+  if ((poller.config?.plane ?? true) && event.type !== 'reassigned') {
+    enqueueFlight(event);
+    // Replay (#34): real assigned/mention/comment only. Test flights and
+    // digests fly but never become the replay target.
+    if (!event.test && ['assigned', 'mention', 'comment'].includes(event.type)) {
+      lastFlown = event;
+      tray.setContextMenu(buildMenu());
+    }
+  }
   teams.sendForEvent(event).catch((e) => console.error(`teams sink failed: ${e.message}`));
 }
 
@@ -366,9 +375,18 @@ function testFlight() {
   });
 }
 
+// Replay (#34) re-flies the remembered event. It goes straight to the queue,
+// not through dispatchEvent, so the Teams sink never sees it: one DM per real
+// event, however many replays.
+function replayFlight() {
+  enqueueFlight(lastFlown);
+}
+
 function buildMenu() {
   return Menu.buildFromTemplate([
     { label: 'Test flight', click: testFlight },
+    { label: lastFlown ? `Replay ${lastFlown.issueKey}` : 'Replay',
+      enabled: !!lastFlown, click: replayFlight },
     {
       label: 'Banner style',
       submenu: [
