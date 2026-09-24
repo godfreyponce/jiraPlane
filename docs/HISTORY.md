@@ -11,6 +11,30 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Tray "Replay <KEY>" re-flies the last real flight — #34 (2026-09-24) — ACCEPTED & CLOSED; commit 83b49f1
+
+A new tray row under Test flight re-flies the last real event the plane flew: same banner, same
+clickable tag URL, no second Teams DM. `lastFlown` is set in the plane-sink branch of
+`dispatchEvent`, and only for `assigned` / `mention` / `comment` events without `test: true`.
+It is an allowlist, so digests, `reassigned`, test flights and any future event type never
+become the replay target. Setting it rebuilds the menu through the same
+`tray.setContextMenu(buildMenu())` path Pause polling uses. `replayFlight()` calls
+`enqueueFlight` directly, never `dispatchEvent`, so the Teams sink never sees a replay, and the
+existing queue makes a replay clicked mid-flight wait its turn. In-memory only: after a restart
+the row is a greyed-out `Replay` until the next real event. Under `PLANE=0` the plane branch
+never runs, so the row stays disabled.
+
+- **Known tradeoff (plan decision 1):** the event is remembered at dispatch, not at takeoff. On
+  a poll cycle that returns two events, the row shows the second key while the first is still
+  flying.
+- **Verified** (owner at the tray, dev instance with `TEAMS_WEBHOOK_URL=` empty): fresh launch
+  shows a greyed-out `Replay`, and a test flight leaves it greyed out; a real event armed it
+  to `Replay <KEY>`; the replay flew the same banner and its tag opened the same browse URL; a
+  test flight after that kept the real key; a replay clicked during a test flight queued behind
+  it. No-DM rests on the code path (`replayFlight` has no `dispatchEvent`), not on a Teams run.
+  Not flown: the digest case (`MAX_EVENTS_PER_CYCLE=0`) and `PLANE=0`, owner accepted before
+  those runs. The allowlist and the plane-sink placement are the code-level evidence for both.
+
 ## Login installer works on a fresh Mac — #33 (2026-09-03) — ACCEPTED & CLOSED; commit 9d9c667
 
 `scripts/install-login-launch.sh` wrote the plist with `cat > "$PLIST"` into
