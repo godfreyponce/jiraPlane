@@ -13,8 +13,9 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
 
-// Flight speed at the accepted feel: the #3/#4 design crossed the 1512-DIP dev
-// screen plus ~234px of offscreen margins in 10s.
+// Single-screen flight speed at the accepted feel: the #3/#4 design crossed the
+// 1512-DIP dev screen plus ~234px of offscreen margins in 10s (12s since #6
+// widened the exit margin). Multi-display rows fly faster, not longer (#17).
 const SPEED_PX_S = 175;
 // Delay between window creation and the synced animation start; overlay pages
 // load in ~350ms (measured), this covers cold starts.
@@ -206,11 +207,15 @@ function createFlight(event) {
     const ref = rowDisplays.find((d) => d.id === primary.id) ||
       rowDisplays.reduce((a, b) => (a.bounds.height >= b.bounds.height ? a : b));
     const flyY = Math.round(ref.bounds.y + ref.bounds.height * 0.32);
+    // Pacing (#17, owner decision 2026-08-10: constant wall-clock): a row flies
+    // in the time its reference display alone would take at SPEED_PX_S, so a
+    // wider row means a faster plane, not a longer flight. At a flat 175px/s a
+    // 1512+1920 row took 23s and the plane reached the second display ~10s after
+    // the event. A one-display row keeps its exact duration (ref is that display).
     // Entry/exit margins mirror plane.html's rig: ~194px offscreen entry
     // (-110% of the ~176px rig); 400px exit so the towed tag (rope 64px + tag
     // ≤312px wide, pivoted 16px in) fully clears the screen before teardown.
-    const spanPx = maxX + 400 - (minX - 194);
-    const durMs = Math.round((spanPx / SPEED_PX_S) * 1000);
+    const durMs = Math.round(((ref.bounds.width + 194 + 400) / SPEED_PX_S) * 1000);
     const leftmost = rowDisplays.reduce((a, b) => (a.bounds.x <= b.bounds.x ? a : b));
     return { displays: rowDisplays, minX, maxX, flyY, durMs, leftmost, ref };
   });
