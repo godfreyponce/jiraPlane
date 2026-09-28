@@ -11,6 +11,23 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Constant wall-clock flight duration — #17 (2026-09-27) — ACCEPTED & CLOSED; commit 8ecc363
+
+Each row now flies in the time its reference display (primary if it is in the row, else the
+tallest) takes alone at 175 px/s, so a wider row flies faster instead of longer. `createFlight`
+derives `durMs` from `ref.bounds.width + 194 + 400` instead of the whole row span. The renderer
+is unchanged: `plane.html` gets speed only as `(toX − fromX) / durS`, so the swoop period, audio
+envelope, skywriter timing and the #15 drag re-seed all follow the shorter `dur`. Owner chose
+constant wall-clock over a capped span (2026-08-10). One-display rows are unchanged
+byte-for-byte, because `ref` is that display. No speed cap yet.
+
+- **Computed, not measured:** on the 1512+1920 desk, 23.0 s → 12.0 s, and the plane reaches
+  the external display at ~5 s instead of ~10 s (plane speed ~335 px/s). The ticket's '~10 s'
+  was the pre-#6 figure; the accepted single-screen duration has been 12.03 s since the 400px
+  exit margin (`9438763`).
+- **Accepted** by the owner on 2026-09-27 from the diff. No measured log numbers or feel verdict
+  were recorded at accept. The code was written 2026-09-26 and sat uncommitted at gate 2.
+
 ## Tray "Replay <KEY>" re-flies the last real flight — #34 (2026-09-24) — ACCEPTED & CLOSED; commit 83b49f1
 
 A new tray row under Test flight re-flies the last real event the plane flew: same banner, same
