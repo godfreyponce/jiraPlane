@@ -72,10 +72,32 @@ There is no test suite for v1 and none planned — **verify = run the app.**
   A test flight also sends a real (but [TEST]-marked) Teams DM (#23) — prefix the run with
   `TEAMS_WEBHOOK_URL=` to iterate on visuals silently.
 - At gate 2, report what you actually ran and what you actually saw — never a claim that
-  "it works" without having flown it. Visual behavior the owner must judge (feel, seams,
-  timing) stays the owner's pass; your run is evidence, not acceptance.
+  "it works" without having flown it. The owner flies the plane — feel, seams, and timing are
+  their pass, not yours; your run is evidence, not acceptance.
 - **One running app instance at a time.** Subagents never launch the app.
 - **Stop what you started.** Quit any `npm start` you launched before ending the session.
+
+The full check at the end of `/build-ticket` is the plan's verification steps, run by you:
+
+```bash
+TEST_FLIGHT=1 npm start           # overlay fires on launch
+# plus whatever the plan specifies (browser previews, MAX_EVENTS_PER_CYCLE=0, dual display)
+```
+
+**Report what you actually saw**, not a claim about it. Quit the app when you're done — never
+leave an `npm start` running past the session.
+
+# Visual rule
+
+Anything visual gets 3 single-file HTML variants first; the owner picks; the winner gets wired in.
+Three variants means three shapes — a second flavor of the first shape doesn't count. Variants go
+in `design-directions/` (git-ignored; the #3/#4 precedent); the winner is wired into `plane.html`,
+and the losing variants are kept there.
+
+# Commit format
+
+`summary (refs #N)` — no type prefix; never `fixes #N`. Trailers: the harness default
+`Co-Authored-By` line, nothing else. No commit hook.
 
 # Project rules
 
@@ -93,9 +115,7 @@ npm start        # Electron app appears in the menu bar; use "Test flight" to fi
 ```
 First poll cycle seeds silently. Reset `state.json` to re-trigger the seed.
 
-## Visual tickets
-The standing habit from #3/#4: rough standalone HTML variants in `design-directions/`
-(git-ignored) first, owner picks, then the plan wires the winner into `plane.html`.
+## Specs and plans
 Specs and plans live repo-local under `docs/superpowers/`; pre-protocol specs
 (the 2026-07-23 design, the 2026-08-01 UI redesign) remain in the projects root
 `~/Developer/docs/superpowers/specs/`.
