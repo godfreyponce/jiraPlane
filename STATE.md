@@ -1,10 +1,10 @@
 ---
 glass: jiraplane
 status: in-progress
-last_worked_on: 2026-09-27
-next_action: "/plan-ticket 22 — display set snapshotted per flight, no sleep/wake handling. Green-lit order (owner, 2026-08-10): #22 → #29."
+last_worked_on: 2026-10-12
+next_action: "/plan-ticket 29 — Alcove-style settings window; tray menu slims to Test flight / Settings… / Quit (#36 supersedes the slim-menu part). Green-lit order (owner, 2026-08-10): #22 → #29."
 blocked_on: ""
-phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10; #28 rows engine — one flight per display row + flyOn all|main setting 2026-08-10; #21 flight start gated on overlay placement (release-settle IPC start) 2026-08-10; #31 quit discards the flight queue — prompt exit 2026-08-11; #33 login installer mkdir -p LaunchAgents (first coworker onboarded) 2026-09-03; #34 tray Replay <KEY> — re-fly last real flight, no DM 2026-09-24; #17 constant wall-clock flight duration — wider rows fly faster 2026-09-27. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
+phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10; #28 rows engine — one flight per display row + flyOn all|main setting 2026-08-10; #21 flight start gated on overlay placement (release-settle IPC start) 2026-08-10; #31 quit discards the flight queue — prompt exit 2026-08-11; #33 login installer mkdir -p LaunchAgents (first coworker onboarded) 2026-09-03; #34 tray Replay <KEY> — re-fly last real flight, no DM 2026-09-24; #17 constant wall-clock flight duration — wider rows fly faster 2026-09-27; #22 display set logged per flight, display changes logged not handled 2026-10-12. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
 
 # jiraPlane — Project State
@@ -89,3 +89,7 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
   standalone-browser pages keep the old query-string start byte-for-byte — don't "fix"
   the missing param. Settle time is usually ~500ms (start stays createdAt+700) but was
   measured at ~2s under a slow-AeroSpace episode; the gate absorbing that is the feature.
+- A flight keeps the display set it was created with (#22). Display add/remove/bounds are
+  logged (`display: ... mid-flight`), not handled. Don't rebuild overlays mid-flight: it
+  drops the #11/#15 drag state. A monitor's power button may not de-enumerate it (the
+  owner's external stays listed while dark) — unplug the cable to test a real removal.

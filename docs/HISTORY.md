@@ -11,6 +11,32 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Display set logged per flight; display changes logged, not handled — #22 (2026-10-12) — ACCEPTED & CLOSED; commit 750fd7c
+
+Decision: a flight keeps the display set it was created with. Nothing in the flight reacts to a
+display being added, removed or resized, because a rebuild would drop the #11/#15 drag state and
+a flight is ~12 s. A display that wakes mid-flight gets no plane until the next flight; a flight
+created while a display sleeps flies the awake displays only; a flight created mid-wake flies
+whatever `getAllDisplays()` returned (no settle delay — nothing measured to base one on); a
+display removed mid-flight keeps its overlay. What changed: `createFlight` logs one ISO-stamped
+`flight:` line (event, flyOn, gated, each display as `id WxH@x,y`, each row's
+minX/maxX/flyY/durMs), and `whenReady` subscribes `display-added` / `display-removed` /
+`display-metrics-changed` (bounds only — workArea changes with the Dock) to log a `display:`
+line, marked `mid-flight` while `activeFlight` is set. `main.js` only, +23 lines.
+
+- **A (launch flight), real line:** `flight: assigned PROJ-142 flyOn=all gated=true
+  displays=[1 1512x982@0,0 primary + 3 2560x1440@1512,-269] rows=[minX=0 maxX=4072 flyY=314
+  durMs=12034]`. Later in the session the external logged as `1920x1080@1512,0` (macOS agreed;
+  `maxX=3432`) — the log follows whatever the desk is.
+- **B (power off mid-flight):** the external's power button does NOT de-enumerate it. The log
+  showed `display: removed ... mid-flight` then `display: added ... mid-flight` 5 ms apart, and
+  macOS kept listing the display as online while it was dark. The owner reported the built-in
+  looked fine (no second or misplaced plane). A real Mac sleep did de-enumerate it (removed,
+  then added 11 min later on wake, no flight in the air).
+- **Not run:** C–F (cable unplug / replug flights, Dock noise). The wake-mid-flight path and the
+  add→settle time are unmeasured; the owner accepted without them.
+- **Accepted** by the owner on 2026-10-12 after A and B.
+
 ## Constant wall-clock flight duration — #17 (2026-09-27) — ACCEPTED & CLOSED; commit 8ecc363
 
 Each row now flies in the time its reference display (primary if it is in the row, else the
