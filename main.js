@@ -163,6 +163,12 @@ ipcMain.on('flight-state', (e, state) => {
   });
 });
 
+// Log form of a display (#22): id, size and global origin, enough to rebuild
+// a flight's rows from the log alone.
+function describeDisplay(d) {
+  return `${d.id} ${d.bounds.width}x${d.bounds.height}@${d.bounds.x},${d.bounds.y}`;
+}
+
 // Rows engine (#28): displays whose [y, y+height) ranges intersect share a
 // horizontal row (union is transitive — a sorted interval-merge sweep). Every
 // display lands in exactly one row, so there is no "unpartitionable" case.
@@ -219,6 +225,12 @@ function createFlight(event) {
     const leftmost = rowDisplays.reduce((a, b) => (a.bounds.x <= b.bounds.x ? a : b));
     return { displays: rowDisplays, minX, maxX, flyY, durMs, leftmost, ref };
   });
+  // #22: the display set this flight was computed from, so a wrong-looking
+  // flight can be explained from the log instead of re-investigated.
+  console.log(`${new Date(createdAt).toISOString()} flight: ${event.type} ${event.issueKey || '-'} ` +
+    `flyOn=${flyOn} gated=${gated} ` +
+    `displays=[${displays.map((d) => describeDisplay(d) + (d.id === primary.id ? ' primary' : '')).join(' + ')}] ` +
+    `rows=[${rows.map((r) => `minX=${r.minX} maxX=${r.maxX} flyY=${r.flyY} durMs=${r.durMs}`).join(' | ')}]`);
   // Exactly one audio source overall: the leftmost window of the primary's row.
   const primaryRow = rows.find((r) => r.displays.some((d) => d.id === primary.id));
   const audioDisplayId = primaryRow.leftmost.id;
@@ -431,6 +443,17 @@ app.whenReady().then(() => {
   tray = new Tray(icon);
   tray.setToolTip('jiraPlane');
   tray.setContextMenu(buildMenu());
+  // Display changes (#22): a flight keeps the display set it was created
+  // with. Rebuilding overlays mid-flight would drop the #11/#15 drag state,
+  // and a display that wakes mid-flight is in the next flight. Logged only.
+  const logDisplay = (what, d) => console.log(`${new Date().toISOString()} display: ${what} ` +
+    `${describeDisplay(d)}${activeFlight ? ' mid-flight' : ''}`);
+  screen.on('display-added', (e, d) => logDisplay('added', d));
+  screen.on('display-removed', (e, d) => logDisplay('removed', d));
+  // A flight reads only bounds; workArea changes with the Dock and menu bar.
+  screen.on('display-metrics-changed', (e, d, changed) => {
+    if (changed.includes('bounds')) logDisplay('bounds', d);
+  });
   startPolling();
   if (process.env.TEST_FLIGHT === '1') testFlight();
 });
