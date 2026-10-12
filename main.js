@@ -37,7 +37,7 @@ try {
 
 function saveSettings() {
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify({ bannerStyle, flyOn }, null, 2) + '\n');
-  tray.setContextMenu(buildMenu());
+  refreshSurfaces();
 }
 
 function setBannerStyle(style) {
@@ -48,6 +48,19 @@ function setBannerStyle(style) {
 function setFlyOn(mode) {
   flyOn = mode;
   saveSettings();
+}
+
+// Pause is session-only (#39 keeps it so): not written to settings.json.
+function setPollingPaused(paused) {
+  pollingPaused = paused;
+  refreshSurfaces();
+}
+
+// The tray menu and the settings window show the same state (#29): a change
+// from either surface redraws both.
+function refreshSurfaces() {
+  tray.setContextMenu(buildMenu());
+  pushSettingsState();
 }
 
 const flightQueue = [];
@@ -399,6 +412,60 @@ function replayFlight() {
   enqueueFlight(lastFlown);
 }
 
+// Settings window (#29): a normal titled window, none of the overlay
+// machinery. Created on first Settings…, hidden (never destroyed) on close.
+const REPO_URL = 'https://github.com/godfreyponce/jiraPlane';
+let settingsWin = null;
+
+function settingsState() {
+  return { bannerStyle, flyOn, pollingPaused, version: app.getVersion() };
+}
+
+function pushSettingsState() {
+  if (settingsWin && !settingsWin.isDestroyed())
+    settingsWin.webContents.send('settings-state', settingsState());
+}
+
+function openSettings() {
+  if (settingsWin) return showSettings();
+  settingsWin = new BrowserWindow({
+    width: 680, height: 460, useContentSize: true,
+    resizable: false, maximizable: false, fullscreenable: false,
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#222222',
+    title: 'jiraPlane Settings',
+    show: false,
+    webPreferences: { contextIsolation: true, sandbox: true,
+                      preload: path.join(__dirname, 'preload-settings.js') },
+  });
+  // Close hides; a real quit (#31's flag) still closes it.
+  settingsWin.on('close', (e) => {
+    if (quitting) return;
+    e.preventDefault();
+    settingsWin.hide();
+  });
+  settingsWin.webContents.on('did-finish-load', pushSettingsState);
+  settingsWin.once('ready-to-show', showSettings);
+  settingsWin.loadFile('settings.html');
+}
+
+// Every show re-sends state: a window hidden for hours never shows stale values.
+function showSettings() {
+  pushSettingsState();
+  settingsWin.show();
+  app.focus({ steal: true }); // tray-only app: bring the window in front of the active app
+}
+
+// The page sends intents; main validates and persists, and the resulting
+// state comes back through refreshSurfaces. The renderer never touches disk.
+ipcMain.on('settings-set', (e, key, value) => {
+  if (key === 'bannerStyle' && (value === 'cargo' || value === 'skywriter')) setBannerStyle(value);
+  if (key === 'flyOn' && (value === 'all' || value === 'main')) setFlyOn(value);
+  if (key === 'pollingPaused' && typeof value === 'boolean') setPollingPaused(value);
+});
+ipcMain.on('settings-test-flight', () => testFlight());
+ipcMain.on('settings-open-repo', () => shell.openExternal(REPO_URL));
+
 function buildMenu() {
   return Menu.buildFromTemplate([
     { label: 'Test flight', click: testFlight },
@@ -425,12 +492,10 @@ function buildMenu() {
     { type: 'separator' },
     {
       label: pollingPaused ? 'Resume polling' : 'Pause polling',
-      click: () => {
-        pollingPaused = !pollingPaused;
-        tray.setContextMenu(buildMenu());
-      },
+      click: () => setPollingPaused(!pollingPaused),
     },
     { type: 'separator' },
+    { label: 'Settings…', click: openSettings },
     { label: 'Quit', click: () => app.quit() },
   ]);
 }
@@ -456,6 +521,7 @@ app.whenReady().then(() => {
   });
   startPolling();
   if (process.env.TEST_FLIGHT === '1') testFlight();
+  if (process.env.OPEN_SETTINGS === '1') openSettings();
 });
 
 // Menu-bar app: stay alive with no windows open.

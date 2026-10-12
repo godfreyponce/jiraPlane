@@ -12,10 +12,14 @@ The plane icon in the menu bar is the whole UI:
 - **Banner style** picks Cargo tag or Skywriter. The choice persists across
   restarts.
 - **Pause polling** pauses both outputs. No planes and no DMs until resumed.
+- **Settings…** opens the settings window: Test flight, Pause polling, Fly on,
+  Banner style, and the version. The menu and the window always agree.
 - **Quit** quits, and stays quit even if you installed the login launcher.
 
 `TEST_FLIGHT=1 npm start` fires a test flight on launch, useful when you're
 poking at plane.html.
+
+`OPEN_SETTINGS=1 npm start` opens the settings window on launch.
 
 ## Configuration
 

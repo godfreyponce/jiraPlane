@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<!-- Window: 680 × 460 (useContentSize) -->
+<!--
+  jiraPlane settings window (#29), preview-led (design-directions variant 3).
+  A live preview strip (sky sketch + display diagram) sits above the controls
+  on General and Appearance. render(state) is the only thing that draws it:
+  it writes data-* attributes on #preview and CSS does the rest.
+  Opened directly in a browser, the bridge below falls back to a local stand-in.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>jiraPlane Settings</title>
+<style>
+  :root {
+    --sidebar: #212121; --pane: #222222; --divider: #373737;
+    --card: #2c2c2c; --card-border: #404040; --hairline: #414141;
+    --text: #f0f0f0; --muted: #8e8e8e; --heading: #9a9a9a;
+    --accent: #2dd4bf;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font: 13px/1.3 -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text); background: var(--pane);
+    -webkit-user-select: none; user-select: none; cursor: default;
+  }
+  [hidden] { display: none !important; }
+  :focus { outline: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button, input, label { -webkit-app-region: no-drag; }
+  .drag { -webkit-app-region: drag; }
+
+  /* Window frame: the page IS the window in Electron; standalone draws a frame */
+  .window { position: relative; display: flex; width: 100vw; height: 100vh;
+            overflow: hidden; background: var(--pane); }
+  body.standalone { background: #5a5a5a; display: grid; place-items: center; }
+  body.standalone .window {
+    width: 680px; height: 460px; border-radius: 16px;
+    box-shadow: 0 0 0 1px #4a4a4a, 0 30px 80px rgba(0,0,0,.55), 0 8px 24px rgba(0,0,0,.35);
+  }
+  .lights { display: none; position: absolute; left: 20px; top: 18px; gap: 8px; z-index: 5; }
+  body.standalone .lights { display: flex; }
+  .lights i { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* Sidebar */
+  .sidebar { flex: none; width: 196px; display: flex; flex-direction: column;
+             background: var(--sidebar); border-right: 1px solid var(--divider); }
+  .sidebar .drag { flex: none; height: 52px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; }
+  .nav button {
+    display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px;
+    border: 0; border-radius: 10px; background: transparent;
+    font: 13.5px -apple-system, BlinkMacSystemFont, sans-serif; color: #ececec;
+    text-align: left;
+  }
+  .nav button[aria-current="page"] { background: #323232; }
+  .icon { flex: none; width: 22px; height: 22px; border-radius: 6px;
+          display: grid; place-items: center;
+          box-shadow: inset 0 .5px 0 rgba(255,255,255,.28); }
+  .icon svg { width: 14px; height: 14px; display: block; }
+  .ic-general    { background: linear-gradient(#a3a3a3, #6b6b6b); }
+  .ic-appearance { background: linear-gradient(#c084fc, #7c3aed); }
+  .ic-about      { background: linear-gradient(#60a5fa, #2563eb); }
+
+  /* Right pane */
+  .pane { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 20px 20px; }
+  .pane-header { flex: none; height: 48px; display: flex; align-items: center; gap: 10px; }
+  .pane-header h1 { margin: 0; font: 700 16px -apple-system, BlinkMacSystemFont, sans-serif; }
+  .page { margin-top: 16px; }
+
+  /* Preview strip: sky sketch (left) + display diagram (right) */
+  .preview { flex: none; display: flex; height: 148px; margin-top: 4px; overflow: hidden;
+             border: 1px solid var(--card-border); border-radius: 12px; background: #1e1e1e; }
+  .skyside { position: relative; flex: 1; min-width: 0; }
+  .sky {
+    position: absolute; inset: 0; overflow: hidden;
+    background:
+      radial-gradient(1.4px 1.4px at 8% 14%,  rgba(255,255,255,.75), transparent),
+      radial-gradient(1.2px 1.2px at 24% 30%, rgba(255,255,255,.5),  transparent),
+      radial-gradient(1.4px 1.4px at 46% 10%, rgba(255,255,255,.65), transparent),
+      radial-gradient(1.2px 1.2px at 78% 18%, rgba(255,255,255,.55), transparent),
+      radial-gradient(1.4px 1.4px at 92% 34%, rgba(255,255,255,.45), transparent),
+      linear-gradient(180deg, #1d2742 0%, #3a4a72 48%, #7c6e8e 78%, #d1966f 100%);
+    transition: filter .2s;
+  }
+  /* fixed-size stage so the SVG sketch and the HTML smoke letters share coords */
+  .stage { position: absolute; left: 50%; top: 50%; width: 289px; height: 146px;
+           margin: -73px 0 0 -144.5px; }
+  .flight { position: absolute; inset: 0; transition: opacity .2s, transform .2s; }
+  .flight svg { position: absolute; inset: 0; overflow: visible; }
+
+  .cargo { transform-origin: 190.4px 64px; animation: swing 3.2s ease-in-out infinite alternate; }
+  @keyframes swing { from { transform: rotate(-2.5deg); } to { transform: rotate(3deg); } }
+  @media (prefers-reduced-motion: reduce) { .cargo { animation: none; } }
+
+  .smoke span {
+    position: absolute; width: 16px; text-align: center; line-height: 21px;
+    font: 800 20px/21px 'Arial Rounded MT Bold', -apple-system, sans-serif;
+    color: #f2f6ff;
+    text-shadow: 0 0 6px rgba(240,246,255,.9), 0 0 14px rgba(240,246,255,.45);
+  }
+  .preview .smoke { display: none; }
+  .preview[data-banner="skywriter"] .smoke { display: block; }
+  .preview[data-banner="skywriter"] .cargo { display: none; }
+
+  .pill { position: absolute; left: 10px; top: 10px; display: none; align-items: center; gap: 5px;
+          padding: 3px 9px 3px 7px; border-radius: 999px;
+          background: rgba(18,18,18,.78); border: 1px solid rgba(255,255,255,.18);
+          font: 600 11px -apple-system, BlinkMacSystemFont, sans-serif; color: #f0f0f0; }
+  .preview[data-paused] .pill { display: flex; }
+  .preview[data-paused] .sky { filter: brightness(.5) saturate(.35); }
+  .preview[data-paused] .flight { opacity: .45; transform: translateY(14px); }
+  .preview[data-paused] .cargo { animation-play-state: paused; }
+
+  .map { position: relative; flex: none; width: 152px; border-left: 1px solid var(--card-border); }
+  .map svg { display: block; }
+  .route, .screen2 { transition: opacity .2s; }
+  .route { display: none; }
+  .preview[data-fly-on="all"]  .route-all,
+  .preview[data-fly-on="main"] .route-main { display: inline; }
+  .preview[data-fly-on="main"] .screen2 { opacity: .35; }
+  .preview[data-paused] .route { opacity: .25; }
+  .map-caption { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center;
+                 font-size: 11px; color: #c8c8c8; }
+
+  /* Grouped cards */
+  .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+         min-height: 42px; padding: 7px 14px 7px 16px; }
+  .row + .row { border-top: 1px solid var(--hairline); }
+  .label { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .name { font-size: 13.5px; color: var(--text); }
+  .help { font-size: 11.5px; color: var(--muted); }
+  .group-title { margin: 0 0 8px 16px; font: 600 13px -apple-system, BlinkMacSystemFont, sans-serif;
+                 color: var(--heading); }
+
+  .btn { flex: none; height: 26px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+         background: #3a3a3a; border: 1px solid #4a4a4a; border-radius: 7px;
+         font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); }
+  .btn:active { background: #464646; }
+
+  /* Switch: the native checkbox sits invisibly on top of the drawn track */
+  .switch { position: relative; flex: none; width: 42px; height: 22px; }
+  .switch input { position: absolute; inset: 0; margin: 0; opacity: 0; }
+  .track { position: absolute; inset: 0; border-radius: 11px; background: #424242;
+           transition: background .18s; pointer-events: none; }
+  .track::after { content: ''; position: absolute; left: 2px; top: 2px; width: 24px; height: 18px;
+                  border-radius: 9px; background: #e3e3e3;
+                  transition: transform .18s, background .18s; }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(14px); background: #e5f9f6; }
+  .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Segmented control (Fly on) */
+  .seg { flex: none; display: inline-flex; gap: 2px; padding: 2px;
+         background: #1f1f1f; border: 1px solid var(--card-border); border-radius: 8px; }
+  .seg button { height: 24px; padding: 0 11px; border: 0; border-radius: 6px; background: transparent;
+                font: 12.5px -apple-system, BlinkMacSystemFont, sans-serif; color: #b5b5b5; }
+  .seg button[aria-pressed="true"] { background: #4a4a4a; color: #fff;
+                                     box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+
+  /* Option tiles (Banner style) */
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 16px 16px 12px; }
+  .tile { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 0;
+          border: 0; border-radius: 12px; background: none; }
+  .tile-face { position: relative; width: 100%; height: 62px; display: grid; place-items: center;
+               background: #373737; border-radius: 10px; box-shadow: inset 0 0 0 1px #444; }
+  .tile[aria-pressed="true"] .tile-face { box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--accent); }
+  .tile-label { font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--muted); }
+  .tile[aria-pressed="true"] .tile-label { color: #fff; font-weight: 600; }
+  .tile:focus-visible { outline-offset: 9px; }
+
+  /* About */
+  .about-hero { display: flex; flex-direction: column; align-items: center; gap: 6px;
+                padding: 18px 0 26px; text-align: center; }
+  .app-icon { width: 84px; height: 84px; margin-bottom: 8px; border-radius: 20px;
+              background: linear-gradient(180deg, #2a3658 0%, #50608c 58%, #c99272 100%);
+              box-shadow: inset 0 .5px 0 rgba(255,255,255,.25), 0 6px 18px rgba(0,0,0,.4); }
+  .app-icon svg { display: block; width: 84px; height: 84px; }
+  .about-name { font: 700 20px -apple-system, BlinkMacSystemFont, sans-serif; }
+  .about-name .ver { font-weight: 400; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="lights" aria-hidden="true">
+    <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>
+  </div>
+
+  <nav class="sidebar" aria-label="Settings sections">
+    <div class="drag"></div>
+    <div class="nav">
+      <button type="button" data-page="general">
+        <span class="icon ic-general"><svg viewBox="0 0 14 14" aria-hidden="true">
+          <circle cx="7" cy="7" r="5.4" fill="none" stroke="#fff" stroke-width="2.2" stroke-dasharray="2.12 2.12"/>
+          <circle cx="7" cy="7" r="3.6" fill="none" stroke="#fff" stroke-width="2.2"/>
+        </svg></span>
+        <span class="nav-label">General</span>
+      </button>
+      <button type="button" data-page="appearance">
+        <span class="icon ic-appearance"><svg viewBox="0 0 14 14" aria-hidden="true">
+          <circle cx="7" cy="7" r="5.2" fill="none" stroke="#fff" stroke-width="1.6"/>
+          <path d="M7 1.8 A5.2 5.2 0 0 1 7 12.2 Z" fill="#fff"/>
+        </svg></span>
+        <span class="nav-label">Appearance</span>
+      </button>
+      <button type="button" data-page="about">
+        <span class="icon ic-about"><svg viewBox="0 0 14 14" aria-hidden="true">
+          <circle cx="7" cy="7" r="5.6" fill="none" stroke="#fff" stroke-width="1.5"/>
+          <circle cx="7" cy="4.4" r="1" fill="#fff"/>
+          <rect x="6.2" y="6.1" width="1.6" height="4.6" rx=".8" fill="#fff"/>
+        </svg></span>
+        <span class="nav-label">About</span>
+      </button>
+    </div>
+  </nav>
+
+  <main class="pane">
+    <header class="pane-header drag">
+      <span class="icon" id="headerIcon"></span>
+      <h1 id="headerTitle"></h1>
+    </header>
+
+    <!-- Live preview. Drawn only by render(state) via data-banner / data-fly-on / data-paused. -->
+    <div class="preview" id="preview" aria-hidden="true">
+      <div class="skyside">
+        <div class="sky">
+          <div class="stage">
+            <div class="flight">
+              <svg width="289" height="146" viewBox="0 0 289 146">
+                <g class="cargo">
+                  <path d="M190.4,64 Q172,85 152.9,81.2" fill="none" stroke="#e9e6dc"
+                        stroke-opacity=".75" stroke-width="1.4" stroke-linecap="round"/>
+                  <g transform="translate(37 70) rotate(-3 62 14)">
+                    <polygon points="0,0 112,0 124,14 112,28 0,28" transform="translate(3 4)"
+                             fill="#000" opacity=".25"/>
+                    <polygon points="0,0 112,0 124,14 112,28 0,28" fill="#e6d6a6"/>
+                    <g font-family="'Marker Felt','Bradley Hand','Comic Sans MS',cursive"
+                       font-size="9" fill="#3a3226">
+                      <text x="6" y="11.5">Assigned to you &#8212;</text>
+                      <text x="6" y="23">PROJ-123: Fix login</text>
+                    </g>
+                    <circle cx="116" cy="14" r="3.2" fill="#8b8d94"/>
+                    <circle cx="116" cy="14" r="2.5" fill="#d8dbe0"/>
+                    <circle cx="116" cy="14" r="1.6" fill="#2c3444"/>
+                  </g>
+                </g>
+                <!-- B2 cream glider: the three baked faces from docs/media/hero.svg -->
+                <g transform="translate(190.4 45.4) scale(.36)">
+                  <polygon points="171.0,46.1 9.7,55.0 1.2,57.6"   fill="#f5efdd"/>
+                  <polygon points="170.9,45.1 1.1,56.6 52.7,71.0"  fill="#b3a683"/>
+                  <polygon points="171.0,46.1 -10.0,35.1 1.2,57.6" fill="#d8cdae"/>
+                </g>
+              </svg>
+              <!-- Skywriter: oldest letters (left) have drifted up and faded -->
+              <div class="smoke">
+                <span style="left:56px;  top:48px; opacity:.48; filter:blur(1.5px)">P</span>
+                <span style="left:71.5px;top:47px; opacity:.55; filter:blur(1.3px)">R</span>
+                <span style="left:87px;  top:47px; opacity:.63; filter:blur(1.1px)">O</span>
+                <span style="left:102.5px;top:48px;opacity:.7;  filter:blur(.9px)">J</span>
+                <span style="left:118px; top:50px; opacity:.78; filter:blur(.7px)">-</span>
+                <span style="left:133.5px;top:52px;opacity:.85; filter:blur(.4px)">1</span>
+                <span style="left:149px; top:53px; opacity:.93; filter:blur(.2px)">2</span>
+                <span style="left:164.5px;top:54px;opacity:1">3</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pill">
+          <svg width="8" height="9" viewBox="0 0 8 9" aria-hidden="true">
+            <rect x="0.5" y="0" width="2.4" height="9" rx="1" fill="#f0f0f0"/>
+            <rect x="5.1" y="0" width="2.4" height="9" rx="1" fill="#f0f0f0"/>
+          </svg>
+          Paused
+        </div>
+      </div>
+
+      <div class="map">
+        <svg width="152" height="146" viewBox="0 0 152 146">
+          <!-- main display: menu-bar line marks it -->
+          <rect x="13" y="34" width="64" height="42" rx="3" fill="#243049" stroke="#6a6a6a" stroke-width="1.5"/>
+          <rect x="14.5" y="35.5" width="61" height="3.2" rx="1" fill="#e8e8e8" opacity=".55"/>
+          <rect x="42" y="76" width="6" height="6" fill="#555"/>
+          <rect x="35" y="82" width="20" height="2.4" rx="1.2" fill="#666"/>
+          <g class="screen2">
+            <rect x="85" y="40" width="54" height="36" rx="3" fill="#243049" stroke="#6a6a6a" stroke-width="1.5"/>
+            <rect x="109" y="76" width="6" height="6" fill="#555"/>
+            <rect x="102" y="82" width="20" height="2.4" rx="1.2" fill="#666"/>
+          </g>
+          <g font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10"
+             fill="#8e8e8e" text-anchor="middle">
+            <text x="45" y="98">Main</text>
+            <text x="112" y="98">Second</text>
+          </g>
+          <g class="route route-all">
+            <path d="M17,54 C26,54 30,46 39,46 S52,54 61,54 S74,46 83,46 S96,54 105,54 S118,46 127,46"
+                  fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="3 2.6" stroke-linecap="round"/>
+            <polygon points="6,0 -4,-3.2 -2,0 -4,3.2" transform="translate(131 46)" fill="#f5efdd"/>
+          </g>
+          <g class="route route-main">
+            <path d="M17,54 C26,54 30,46 39,46 S52,54 61,54"
+                  fill="none" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="3 2.6" stroke-linecap="round"/>
+            <polygon points="6,0 -4,-3.2 -2,0 -4,3.2" transform="translate(66 54)" fill="#f5efdd"/>
+          </g>
+        </svg>
+        <div class="map-caption" id="mapCaption"></div>
+      </div>
+    </div>
+
+    <section class="page" data-page="general">
+      <div class="card">
+        <div class="row">
+          <span class="label">
+            <span class="name">Fly a sample plane</span>
+            <span class="help">Uses your current settings.</span>
+          </span>
+          <button type="button" class="btn" id="testFlight">Test flight</button>
+        </div>
+        <label class="row">
+          <span class="label">
+            <span class="name">Pause polling</span>
+            <span class="help">Stops both the plane and the Teams DM.</span>
+          </span>
+          <span class="switch"><input type="checkbox" role="switch" id="pollingPaused"><span class="track"></span></span>
+        </label>
+        <div class="row">
+          <span class="label">
+            <span class="name">Fly on</span>
+            <span class="help">Where a flight crosses.</span>
+          </span>
+          <div class="seg" role="group" aria-label="Fly on">
+            <button type="button" data-key="flyOn" data-value="all">All displays</button>
+            <button type="button" data-key="flyOn" data-value="main">Main display</button>
+          </div>
+        </div>
+        <label class="row" id="loginRow">
+          <span class="label"><span class="name">Launch at login</span></span>
+          <span class="switch"><input type="checkbox" role="switch" id="launchAtLogin"><span class="track"></span></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="page" data-page="appearance">
+      <h2 class="group-title">Banner style</h2>
+      <div class="card">
+        <div class="tiles" role="group" aria-label="Banner style">
+          <button type="button" class="tile" data-key="bannerStyle" data-value="cargo">
+            <span class="tile-face">
+              <svg width="96" height="40" viewBox="0 0 96 40" aria-hidden="true">
+                <path d="M58,18.3 Q56,27 50.5,28" fill="none" stroke="#e9e6dc" stroke-opacity=".7" stroke-width="1.1"/>
+                <polygon points="4,21 48,21 54,28 48,35 4,35" fill="#e6d6a6"/>
+                <line x1="8" y1="26" x2="38" y2="26" stroke="#3a3226" stroke-opacity=".55" stroke-width="1.2" stroke-linecap="round"/>
+                <line x1="8" y1="30.5" x2="30" y2="30.5" stroke="#3a3226" stroke-opacity=".55" stroke-width="1.2" stroke-linecap="round"/>
+                <circle cx="50.5" cy="28" r="1.6" fill="#2c3444"/>
+                <g transform="translate(58 8) scale(.2)">
+                  <polygon points="171.0,46.1 9.7,55.0 1.2,57.6"   fill="#f5efdd"/>
+                  <polygon points="170.9,45.1 1.1,56.6 52.7,71.0"  fill="#b3a683"/>
+                  <polygon points="171.0,46.1 -10.0,35.1 1.2,57.6" fill="#d8cdae"/>
+                </g>
+              </svg>
+            </span>
+            <span class="tile-label">Cargo tag</span>
+          </button>
+          <button type="button" class="tile" data-key="bannerStyle" data-value="skywriter">
+            <span class="tile-face">
+              <svg width="96" height="40" viewBox="0 0 96 40" aria-hidden="true">
+                <g font-family="'Arial Rounded MT Bold', -apple-system, sans-serif" font-size="13"
+                   font-weight="800" fill="#f2f6ff" stroke="#f2f6ff" stroke-width="3.5"
+                   stroke-opacity=".18" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">
+                  <text x="9"  y="21" opacity=".5">P</text>
+                  <text x="20" y="22" opacity=".65">R</text>
+                  <text x="31" y="24" opacity=".8">O</text>
+                  <text x="42" y="26" opacity="1">J</text>
+                </g>
+                <g transform="translate(58 8) scale(.2)">
+                  <polygon points="171.0,46.1 9.7,55.0 1.2,57.6"   fill="#f5efdd"/>
+                  <polygon points="170.9,45.1 1.1,56.6 52.7,71.0"  fill="#b3a683"/>
+                  <polygon points="171.0,46.1 -10.0,35.1 1.2,57.6" fill="#d8cdae"/>
+                </g>
+              </svg>
+            </span>
+            <span class="tile-label">Skywriter</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" data-page="about">
+      <div class="about-hero">
+        <div class="app-icon">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <g transform="translate(36.4,32.75) rotate(-28) scale(0.30,0.75) translate(-80.5,-53)">
+              <polygon points="171.0,46.1 9.7,55.0 1.2,57.6"   fill="#f5efdd"/>
+              <polygon points="170.9,45.1 1.1,56.6 52.7,71.0"  fill="#b3a683"/>
+              <polygon points="171.0,46.1 -10.0,35.1 1.2,57.6" fill="#d8cdae"/>
+            </g>
+          </svg>
+        </div>
+        <div class="about-name">jiraPlane <span class="ver" id="version"></span></div>
+        <div class="help">It flies across your screen when Jira needs you.</div>
+      </div>
+      <div class="card">
+        <div class="row">
+          <span class="label"><span class="name">Source code</span></span>
+          <button type="button" class="btn" id="openRepo">
+            GitHub
+            <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden="true">
+              <path d="M2 7 L7 2 M3 2 H7 V6" fill="none" stroke="#f0f0f0" stroke-width="1.3"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // Local UI state: which sidebar page is showing. Not part of `state`;
+  // render(state) never touches it.
+  let page = 'general';
+
+  const $ = (id) => document.getElementById(id);
+  const preview = $('preview');
+  const pausedInput = $('pollingPaused');
+  const loginInput = $('launchAtLogin');
+  const loginRow = $('loginRow');
+
+  function showPage(name) {
+    page = name;
+    for (const b of document.querySelectorAll('.nav button')) {
+      const on = b.dataset.page === page;
+      b.setAttribute('aria-current', on ? 'page' : 'false');
+      if (on) {
+        const icon = b.querySelector('.icon');
+        $('headerIcon').className = icon.className;
+        $('headerIcon').innerHTML = icon.innerHTML;
+        $('headerTitle').textContent = b.querySelector('.nav-label').textContent;
+      }
+    }
+    for (const s of document.querySelectorAll('section.page')) s.hidden = s.dataset.page !== page;
+    preview.hidden = page === 'about';
+  }
+
+  function render(state) {
+    pausedInput.checked = state.pollingPaused;
+    loginInput.checked = state.launchAtLogin === true;
+    loginRow.hidden = state.launchAtLogin === undefined;
+    for (const b of document.querySelectorAll('button[data-key]')) {
+      b.setAttribute('aria-pressed', String(state[b.dataset.key] === b.dataset.value));
+    }
+    $('version').textContent = state.version;
+
+    preview.dataset.banner = state.bannerStyle;
+    preview.dataset.flyOn = state.flyOn;
+    preview.toggleAttribute('data-paused', state.pollingPaused);
+    $('mapCaption').textContent = state.pollingPaused ? 'Paused: no flights'
+      : state.flyOn === 'main' ? 'Main display only' : 'Crosses every display';
+  }
+
+  document.querySelector('.nav').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-page]');
+    if (b) showPage(b.dataset.page);
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-key]');
+    if (b) api.set(b.dataset.key, b.dataset.value);
+  });
+  pausedInput.addEventListener('change', () => api.set('pollingPaused', pausedInput.checked));
+  loginInput.addEventListener('change', () => api.set('launchAtLogin', loginInput.checked));
+  $('testFlight').addEventListener('click', () => api.testFlight());
+  $('openRepo').addEventListener('click', () => api.openRepo());
+
+  showPage(page);
+</script>
+<script>
+// Settings bridge (#29): intents go to main, state comes back. In a plain
+// browser there is no preload, so a local stand-in echoes state for layout work.
+const api = window.jiraPlaneSettings || standaloneApi();
+function standaloneApi() {
+  document.body.classList.add('standalone');
+  let state = { bannerStyle: 'cargo', flyOn: 'all', pollingPaused: false,
+                launchAtLogin: true, version: '0.1.0' };
+  let onState = () => {};
+  return {
+    onState: (cb) => { onState = cb; cb(state); },
+    set: (key, value) => { state = { ...state, [key]: value }; onState(state); },
+    testFlight: () => console.log('standalone: test flight'),
+    openRepo: () => console.log('standalone: open repo'),
+  };
+}
+api.onState(render);
+</script>
+</body>
+</html>
