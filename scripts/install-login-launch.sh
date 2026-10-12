@@ -35,6 +35,10 @@ cat > "$PLIST" <<EOF
 </plist>
 EOF
 
+# --write-only (#29): the settings toggle, run from the login instance itself.
+# Its job is still loaded, and bootout would kill the caller.
+if [ "$1" = "--write-only" ]; then exit 0; fi
+
 launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 echo "Installed com.jiraplane.app — jiraPlane is now running and will start at every login."

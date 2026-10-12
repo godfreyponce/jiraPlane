@@ -71,6 +71,9 @@ the installer (or log back in) when you're done.
 Starts the app now, at every login, and again after a crash. Tray Quit stays
 quit until next login. Uninstall commands are in the script header.
 
+**Launch at login** in Settings… does the same install or uninstall from the app. It is
+safe to flip from the login instance itself: the app keeps running either way.
+
 ## Retiring the JiraAlerts timer
 
 Once your DMs come from jiraPlane, the old

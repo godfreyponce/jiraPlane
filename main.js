@@ -418,7 +418,8 @@ const REPO_URL = 'https://github.com/godfreyponce/jiraPlane';
 let settingsWin = null;
 
 function settingsState() {
-  return { bannerStyle, flyOn, pollingPaused, version: app.getVersion() };
+  return { bannerStyle, flyOn, pollingPaused, launchAtLogin: fs.existsSync(LOGIN_PLIST),
+           version: app.getVersion() };
 }
 
 function pushSettingsState() {
@@ -462,9 +463,43 @@ ipcMain.on('settings-set', (e, key, value) => {
   if (key === 'bannerStyle' && (value === 'cargo' || value === 'skywriter')) setBannerStyle(value);
   if (key === 'flyOn' && (value === 'all' || value === 'main')) setFlyOn(value);
   if (key === 'pollingPaused' && typeof value === 'boolean') setPollingPaused(value);
+  if (key === 'launchAtLogin' && typeof value === 'boolean') setLaunchAtLogin(value);
 });
 ipcMain.on('settings-test-flight', () => testFlight());
 ipcMain.on('settings-open-repo', () => shell.openExternal(REPO_URL));
+
+// Launch at login (#29) wraps the #7 LaunchAgent: on = the plist exists.
+const LOGIN_PLIST = path.join(app.getPath('home'), 'Library', 'LaunchAgents', 'com.jiraplane.app.plist');
+const LOGIN_SERVICE = `gui/${process.getuid()}/com.jiraplane.app`;
+const INSTALLER = path.join(__dirname, 'scripts', 'install-login-launch.sh');
+let loginToggleBusy = false;
+
+function setLaunchAtLogin(on) {
+  if (loginToggleBusy || on === fs.existsSync(LOGIN_PLIST)) return pushSettingsState();
+  loginToggleBusy = true;
+  const done = (err) => {
+    if (err) console.error(`launch at login: ${err.message}`);
+    loginToggleBusy = false;
+    pushSettingsState();
+  };
+  // launchctl print fails (exit 113) when the job is not loaded.
+  execFile('/bin/launchctl', ['print', LOGIN_SERVICE], (notLoaded, stdout) => {
+    // #7 gotcha: if this process IS the login job, bootout would SIGTERM it
+    // and leave zero instances. Only the plist changes; the loaded job stays
+    // until logout, so a crash before then still restarts the app.
+    const isLoginJob = !notLoaded && new RegExp(`^\\s*pid = ${process.pid}$`, 'm').test(stdout);
+    if (on) {
+      // The full install bootstraps the job: launchd's new instance loses the
+      // single-instance lock to this one and exits 0, and KeepAlive
+      // (SuccessfulExit=false) does not restart a clean exit.
+      execFile('/bin/sh', [INSTALLER, ...(isLoginJob ? ['--write-only'] : [])], done);
+    } else {
+      fs.rmSync(LOGIN_PLIST, { force: true });
+      if (notLoaded || isLoginJob) return done();
+      execFile('/bin/launchctl', ['bootout', LOGIN_SERVICE], done);
+    }
+  });
+}
 
 function buildMenu() {
   return Menu.buildFromTemplate([
