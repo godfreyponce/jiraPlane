@@ -2,7 +2,7 @@
 glass: jiraplane
 status: in-progress
 last_worked_on: 2026-10-13
-next_action: "/plan-ticket 38 — popover shell: left-click on the tray opens the #37 winner (design-directions/popover-1-menu.html) as an anchored panel; right-click keeps the native menu (second slice of #36; #39–#41 follow). Starts on an empty state and keeps Settings… enabled (owner, #37 pick). #38 has no ready-for-agent label yet."
+next_action: "/plan-ticket 39 — popover status header: last poll time and pause toggle, pushed live from main (third slice of #36). #39 has no ready-for-agent label yet."
 blocked_on: ""
 phase: "v1 shipped and accepted through #11: #1 tray + overlay queue; #2 live polling 2026-07-31; #3 B2 paper glider redesign 2026-08-02; #4 cargo-tag pendulum banner 2026-08-02; #6 continuous multi-display flight (AeroSpace release) 2026-08-03; #10 banner style picker + skywriter 2026-08-03; #9 clickable cargo tag 2026-08-04; #13 pre-existing comment flood guard 2026-08-04; #12 overlay level re-assert hardening 2026-08-04; #11 draggable plane (motion → per-frame sim) 2026-08-04; #15 drag scrubs flight progress + three-grab fast exit 2026-08-04; #7 Teams DM sink — one poller two outputs, login LaunchAgent 2026-08-05; #8 coworker onboarding — PLANE=0 opt-out, ONBOARDING.md, MIT license + public flip 2026-08-05; #23 [TEST]-marked test-flight DMs 2026-08-06; #24 aerospace absolute-path resolve — multi-display flight restored under the LaunchAgent 2026-08-06; #27 ONBOARDING step 3 stops failing silently 2026-08-10; #28 rows engine — one flight per display row + flyOn all|main setting 2026-08-10; #21 flight start gated on overlay placement (release-settle IPC start) 2026-08-10; #31 quit discards the flight queue — prompt exit 2026-08-11; #33 login installer mkdir -p LaunchAgents (first coworker onboarded) 2026-09-03; #34 tray Replay <KEY> — re-fly last real flight, no DM 2026-09-24; #17 constant wall-clock flight duration — wider rows fly faster 2026-09-27; #22 display set logged per flight, display changes logged not handled 2026-10-12; #29 settings window (General/Appearance/About) + launch-at-login toggle 2026-10-12; #37 popover design pick (popover-1-menu) 2026-10-13. Two-session ticket protocol adopted 2026-08-03 (ported from Kal)."
 ---
@@ -55,8 +55,16 @@ No test suite — verify = run the app. `TEST_FLIGHT=1 npm start` fires a flight
 - `settings.json` (gitignored) holds user prefs — the banner style (#10) and flyOn all|main
   (#28), written together by `saveSettings()` so neither setter clobbers the other. Separate
   file from `state.json` precisely so resetting dedup state keeps the user's choice.
-- Flight visuals stay in `plane.html`; settings visuals in `settings.html` (#29). Each is one
-  self-contained file.
+- Flight visuals stay in `plane.html`; settings visuals in `settings.html` (#29); the tray
+  panel in `popover.html` (#38). Each is one self-contained file.
+- Never `tray.setContextMenu` (#38): on macOS a tray context menu opens on left click too,
+  and `'click'` never fires. Right click calls `popUpContextMenu(buildMenu())`, built fresh
+  each time, so nothing has to re-set the menu when state changes.
+- The popover (#38) is a hidden `type:'panel'` window made once at launch, never destroyed.
+  Its level is `'pop-up-menu'` (layer 101), below the overlays' `'screen-saver'` (1000), so
+  a plane flies over the open panel. Its size is fixed at the empty state, 320 × 197; real
+  rows (#40) need a resize. It is NOT released from AeroSpace: the release made the panel
+  blur and hide ~1.9 s after opening.
 - Overlay windows need `'screen-saver'` level + `setVisibleOnAllWorkspaces(false, {visibleOnFullScreen: true})`
   or the plane won't appear over full-screen apps. (The old "canJoinAllSpaces
   drags windows" diagnosis was WRONG — the dragger was AeroSpace all along, #6.)

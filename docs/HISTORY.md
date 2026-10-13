@@ -11,6 +11,37 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Tray popover shell — #38 (2026-10-13) — ACCEPTED & CLOSED; commit b645203
+
+Second slice of #36. Left click on the tray icon opens `popover.html`, the #37 pick, as a
+320 × 197 panel anchored under the icon. Its rows are Test flight, Settings… (opens the #29
+window) and Quit. Right click keeps the native menu until #41. The panel is a hidden
+`type:'panel'` window with `vibrancy:'menu'`, made at launch and never destroyed. A blur or a
+second click hides it. It starts on an empty state: "Waiting for first poll", "No flights
+yet", and a Pause switch that snaps back off. `preload-popover.js` sends the three intents;
+#39 and #40 push real state. `OPEN_POPOVER=1 npm start` opens it on launch. At gate 2 the
+owner changed the row highlight from teal to the native menu blue, `#2e53b7` (sampled from
+their screenshot), with white text. The Settings window stays teal; the owner's clickable
+Fly on monitors went to #46.
+
+- **Native unknowns:** U1 hit. AeroSpace adopts the panel, and the plan's fix (release it
+  after show) made the panel blur and hide ~1.9 s later (instrumented run, plus a control
+  run without the release). The fix was reverted per the plan's "report it and stop". The
+  owner passed all nine gate 2 items without it. U2 to U5 were not hit, so their fixes did
+  not ship.
+- **Proven:** the panel at layer 101 at the logged position (window probe), a test flight's
+  overlay at layer 1000 over it, the browser sizes 320 × 197 / 293 / 212, and the owner's
+  nine-item gate 2 pass.
+- **What the plan got wrong:** its `OPEN_POPOVER` hook read the tray bounds at
+  ready-to-show, but a new Tray reports placeholder bounds (y = display bottom) for its first
+  ~130 ms, so run 1 opened the panel off-screen; the hook now waits 1 s. Its grep for
+  `setContextMenu` matches the comment the plan itself mandates; the call form is gone. It
+  missed that a fast second click arrives as `'double-click'`; the final review caught it,
+  and `setIgnoreDoubleClickEvents(true)` fixed it.
+- **Deferred minors:** clicking another menu-bar item may not close the panel; Escape does
+  not close it; the usage.md right-click list lacks Replay and Fly on (older gap).
+---
+
 ## Popover design pick (popover-1-menu) — #37 (2026-10-13) — ACCEPTED & CLOSED; docs commit only
 
 First slice of #36, the CodexBar-style tray popover. Three standalone variants live in the
