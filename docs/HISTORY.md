@@ -11,6 +11,34 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Popover design pick (popover-1-menu) — #37 (2026-10-13) — ACCEPTED & CLOSED; docs commit only
+
+First slice of #36, the CodexBar-style tray popover. Three standalone variants live in the
+git-ignored `design-directions/`, each on fake data with a preset strip (flights, empty,
+paused, error) and the state and bridge contract #38 will feed. `popover-1-menu.html` is a
+menu-like list with fixed 24 px rows, 320 × 293 at 5 rows, 197 empty, 212 with a config
+error. `popover-2-cards.html` is one card per flight, 360 × 529 / 335 / 348, and its height
+follows the content. `popover-3-timeline.html` is a timeline, 340 × 297 / 177 / 205. The
+owner picked variant 1; variants 2 and 3 stay in `design-directions/`.
+
+The one tweak: the key column is capped at 120 px, which fits a 14-character key (measured
+119.2 px). A longer key ends in an ellipsis, so snippets keep their width. Two owner
+decisions for #38: the shell starts on an empty state, so the panel shows "Waiting for first
+poll" and "No flights yet" until #39 and #40 send real data; and the Settings… row stays
+enabled, so #38's "visibly disabled" line is stale. The review minors #38 inherits are in
+the plan's Pick section.
+
+- **Proven:** the plan's greps and browser checks passed for all three variants on every
+  preset. After the tweak, PLATFORM-10482 measured 119.2 px uncut, a 17-character key capped
+  at 120 px with an ellipsis, and the three sizes did not change. `TEST_FLIGHT=1 npm start`
+  flew on the main and the external display; no tracked file changed.
+- **What the plan got wrong:** its `fit-content(120px)` track came out at 106 px under
+  subgrid and cut PLATFORM-10482; `max-width: 120px` on `.key` works. Its #38 scope (footer
+  only) conflicted with every variant assuming full state; the final reviewer caught it and
+  the owner chose the empty start. Its "full redraw on every call" rule let v3 rebuild the
+  whole panel on each push, which loses focus and mid-press clicks; deferred because v1 won.
+---
+
 ## Settings window (General/Appearance/About) + launch-at-login toggle — #29 (2026-10-12) — ACCEPTED & CLOSED; commits ee3a7bc, 26e4016
 
 The tray gains **Settings…**, which opens one 680 × 460 window (`settings.html`, sandboxed
