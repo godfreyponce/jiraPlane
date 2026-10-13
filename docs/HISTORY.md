@@ -11,6 +11,38 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Settings window (General/Appearance/About) + launch-at-login toggle — #29 (2026-10-12) — ACCEPTED & CLOSED; commits ee3a7bc, 26e4016
+
+The tray gains **Settings…**, which opens one 680 × 460 window (`settings.html`, sandboxed
+preload `preload-settings.js`). The owner picked variant 3 of three (`settings-3-preview.html`,
+preview-led: a live sky sketch + display diagram above the controls), bg `#222222`, no tweaks;
+variants 1 (Alcove grouped card) and 2 (single scroll + TOC) stay in `design-directions/`. The
+page sends intents (`settings-set`); main validates, saves, and pushes `settings-state`.
+`refreshSurfaces()` redraws the tray menu and pushes to the window, so the two always agree.
+Pause stays session-only (#39 keeps it so). The menu did NOT slim to Test flight / Settings… /
+Quit — #36 took that over; the old items stay. Close hides; the window is a singleton.
+
+Task 3 shipped: **Launch at login** wraps `scripts/install-login-launch.sh`. `setLaunchAtLogin`
+asks `launchctl print` whether this process is the login job (`pid = N` line). If it is, On
+runs the installer with `--write-only` (new flag: write the plist, skip bootout/bootstrap) and
+Off deletes the plist but leaves the job loaded until logout. From a dev instance, On runs the
+full installer; the login copy it starts hits the single-instance lock and exits 0, so
+`KeepAlive SuccessfulExit=false` does not restart it.
+
+- **Proven on this Mac:** the exit-0 fact (dev instance up, installer run: `state = not
+  running`, `runs = 1`, `last exit code = 0`, one process); the pid parse (kickstart, `pid =
+  46224`, regex matched 46224, rejected 4622 and 462241); full check `TEST_FLIGHT=1
+  OPEN_SETTINGS=1` flew the cargo plane above the open window; `settings.json` unchanged.
+- **What the plan got wrong:** `app.focus({steal: true})` does not bring the window forward on
+  a launch with no click — one `OPEN_SETTINGS=1` run opened it behind the active app. Task 3
+  had no backup step before the installer run, so the owner's plist was rewritten (valid, same
+  size, different bytes — likely path letter case; unproven) instead of restored. Variant 1's
+  brief said "each setting its own card" while the Alcove reference groups rows.
+- **Deferred minors (final review, filed as #44):** a file dropped on the window navigates it away from
+  `settings.html`; an open window does not re-read state on focus; the usage.md Settings…
+  bullet omits Launch at login.
+- **Accepted** by the owner on 2026-10-12.
+
 ## Display set logged per flight; display changes logged, not handled — #22 (2026-10-12) — ACCEPTED & CLOSED; commit 750fd7c
 
 Decision: a flight keeps the display set it was created with. Nothing in the flight reacts to a
