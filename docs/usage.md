@@ -5,7 +5,13 @@ that: the tray, the knobs, and the two files the app writes.
 
 ## The tray
 
-The plane icon in the menu bar is the whole UI:
+Left click on the plane icon opens the panel. Its rows are **Test flight**,
+**Settings…** and **Quit**, the same as in the menu below. The status line and
+the flights list are not wired yet: they read "Waiting for first poll" and "No
+flights yet", and the Pause switch does nothing. Click outside the panel, or on
+the icon again, to close it.
+
+Right click opens the menu:
 
 - **Test flight** fires a fake plane (PROJ-142, "Fix login redirect") without
   touching Jira. If a Teams webhook is set, it sends a [TEST]-marked DM too.
@@ -20,6 +26,7 @@ The plane icon in the menu bar is the whole UI:
 poking at plane.html.
 
 `OPEN_SETTINGS=1 npm start` opens the settings window on launch.
+`OPEN_POPOVER=1 npm start` opens the panel on launch.
 
 ## Configuration
 

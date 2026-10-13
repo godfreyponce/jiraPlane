@@ -56,10 +56,9 @@ function setPollingPaused(paused) {
   refreshSurfaces();
 }
 
-// The tray menu and the settings window show the same state (#29): a change
-// from either surface redraws both.
+// The tray menu and the settings window show the same state (#29): the menu
+// is rebuilt on every right click (#38), so only the window needs a push.
 function refreshSurfaces() {
-  tray.setContextMenu(buildMenu());
   pushSettingsState();
 }
 
@@ -359,7 +358,6 @@ function dispatchEvent(event) {
     // digests fly but never become the replay target.
     if (!event.test && ['assigned', 'mention', 'comment'].includes(event.type)) {
       lastFlown = event;
-      tray.setContextMenu(buildMenu());
     }
   }
   teams.sendForEvent(event).catch((e) => console.error(`teams sink failed: ${e.message}`));
@@ -468,6 +466,68 @@ ipcMain.on('settings-set', (e, key, value) => {
 ipcMain.on('settings-test-flight', () => testFlight());
 ipcMain.on('settings-open-repo', () => shell.openExternal(REPO_URL));
 
+// Tray popover (#38): the #37 pick (popover-1-menu) as a frameless vibrancy
+// panel under the tray icon. Created hidden at launch so a click opens it at
+// once; hidden, never destroyed, on dismiss.
+const POPOVER_SIZE = { width: 320, height: 197 }; // #37 pick, measured at the empty state
+const POPOVER_GAP = 5; // px under the icon, as on the #37 stage (24 px menu bar, panel at 29)
+let popoverWin = null;
+
+function createPopover() {
+  popoverWin = new BrowserWindow({
+    ...POPOVER_SIZE,
+    // Non-activating NSPanel: opens on the current Space and over full-screen
+    // apps, like a native menu.
+    type: 'panel',
+    frame: false,
+    vibrancy: 'menu',
+    visualEffectState: 'active', // keep the blur while the app is inactive, like a menu
+    resizable: false, movable: false, minimizable: false, maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    acceptFirstMouse: true, // the first click picks a row instead of focusing (#9)
+    show: false,
+    webPreferences: { contextIsolation: true, sandbox: true,
+                      preload: path.join(__dirname, 'preload-popover.js') },
+  });
+  popoverWin.on('blur', () => popoverWin.hide());
+  // Close hides; a real quit (#31's flag) still closes it.
+  popoverWin.on('close', (e) => {
+    if (quitting) return;
+    e.preventDefault();
+    popoverWin.hide();
+  });
+  // A new Tray reports placeholder bounds (y = display bottom) for its first
+  // ~130-300 ms (measured 2026-10-13), so the hook waits 1 s (about 3x that, a
+  // margin guess) before reading them.
+  if (process.env.OPEN_POPOVER === '1')
+    popoverWin.once('ready-to-show', () => setTimeout(() => togglePopover(tray.getBounds()), 1000));
+  popoverWin.loadFile('popover.html');
+}
+
+function togglePopover(trayBounds) {
+  if (popoverWin.isVisible()) return popoverWin.hide();
+  const display = screen.getDisplayMatching(trayBounds);
+  const { workArea } = display;
+  // Left edge under the icon's left edge (NSMenu-style), pulled left if the
+  // panel would run off the display.
+  const x = Math.round(Math.min(trayBounds.x, workArea.x + workArea.width - POPOVER_SIZE.width));
+  const y = Math.round(trayBounds.y + trayBounds.height + POPOVER_GAP);
+  popoverWin.setPosition(x, y);
+  // #22 habit: a panel in the wrong place can be explained from the log.
+  console.log(`${new Date().toISOString()} popover: tray=${trayBounds.x},${trayBounds.y} ` +
+    `${trayBounds.width}x${trayBounds.height} at=${x},${y} display=${describeDisplay(display)}`);
+  popoverWin.show();
+  // Below the overlays' 'screen-saver': a flight always renders above the
+  // popover. After show, which can re-stack (#12).
+  popoverWin.setAlwaysOnTop(true, 'pop-up-menu');
+}
+
+// Popover rows act like menu items: the panel closes, then the action runs.
+ipcMain.on('popover-test-flight', () => { popoverWin.hide(); testFlight(); });
+ipcMain.on('popover-open-settings', () => { popoverWin.hide(); openSettings(); });
+ipcMain.on('popover-quit', () => app.quit());
+
 // Launch at login (#29) wraps the #7 LaunchAgent: on = the plist exists.
 const LOGIN_PLIST = path.join(app.getPath('home'), 'Library', 'LaunchAgents', 'com.jiraplane.app.plist');
 const LOGIN_SERVICE = `gui/${process.getuid()}/com.jiraplane.app`;
@@ -542,7 +602,18 @@ app.whenReady().then(() => {
   );
   tray = new Tray(icon);
   tray.setToolTip('jiraPlane');
-  tray.setContextMenu(buildMenu());
+  // Otherwise a fast second click arrives as 'double-click', not 'click', and
+  // the panel ignores it.
+  tray.setIgnoreDoubleClickEvents(true);
+  // Left click toggles the popover (#38); right click keeps the native menu
+  // until #41. Never setContextMenu: on macOS a tray context menu opens on
+  // left click too, and 'click' is never emitted.
+  tray.on('click', (e, bounds) => togglePopover(bounds));
+  tray.on('right-click', () => {
+    popoverWin.hide();
+    tray.popUpContextMenu(buildMenu());
+  });
+  createPopover();
   // Display changes (#22): a flight keeps the display set it was created
   // with. Rebuilding overlays mid-flight would drop the #11/#15 drag state,
   // and a display that wakes mid-flight is in the next flight. Logged only.

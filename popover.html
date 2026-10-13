@@ -1,0 +1,344 @@
+<!-- popover (#38): the #37 pick, popover-1-menu. 320 × 293 at 5 rows, 197 empty, 212 config
+     error (measured). main.js POPOVER_SIZE is the empty size. -->
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Popover variant 1 — "Menu": a native menu, made custom (CodexBar-faithful).
+  Header with name + status and a small pause switch, a "Recent flights"
+  section of single-line 24 px menu items (key · snippet · short time), then
+  footer items that look and highlight exactly like the list rows.
+  Key column is a subgrid track sized to the widest key, capped at 120 px (fits a
+  14-character key, measured 119 px; owner pick), so snippets and times line up.
+-->
+<head>
+<meta charset="utf-8">
+<title>jiraPlane</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --text: #f0f0f0; --muted: #8e8e8e; --accent: #2e53b7;
+    --paused: #ff9f0a; --error: #ff453a;
+    --hairline: rgba(255,255,255,.1);
+    --on-accent: #ffffff; --on-accent-2: rgba(255,255,255,.7);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body {
+    font: 13px/1.3 -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -webkit-user-select: none; user-select: none; cursor: default;
+  }
+  :focus { outline: none; }
+
+  /* Panel */
+  .panel {
+    width: 320px; padding: 5px 0; overflow: hidden;
+    background: rgba(30,30,32,.72);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 10px;
+  }
+  .sep { height: 1px; margin: 5px 12px; background: var(--hairline); }
+
+  /* Header */
+  .head { display: flex; align-items: center; gap: 12px; padding: 6px 14px 7px; }
+  .who { flex: 1; min-width: 0; }
+  .title {
+    font-size: 13px; font-weight: 600; line-height: 16px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .status {
+    margin-top: 1px; font-size: 11.5px; line-height: 15px; color: var(--muted);
+    overflow-wrap: anywhere; overflow: hidden;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  }
+  .status[data-tone="paused"] { color: var(--paused); }
+  .status[data-tone="error"]  { color: var(--error); }
+  .pause { flex: none; display: flex; align-items: center; gap: 7px; }
+  .pause-text { font-size: 11.5px; color: var(--muted); }
+  .pause:has(input:disabled) .pause-text { opacity: .45; }
+
+  /* Switch: settings.html .switch, scaled to 34 × 18 */
+  .switch { position: relative; flex: none; width: 34px; height: 18px; }
+  .switch input { position: absolute; inset: 0; margin: 0; opacity: 0; }
+  .track { position: absolute; inset: 0; border-radius: 9px; background: #424242;
+           transition: background .18s, opacity .18s; pointer-events: none; }
+  .track::after { content: ''; position: absolute; left: 2px; top: 2px; width: 20px; height: 14px;
+                  border-radius: 7px; background: #e3e3e3;
+                  transition: transform .18s, background .18s; }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(10px); background: #e5f9f6; }
+  .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .switch input:disabled + .track { opacity: .4; }
+
+  /* Section label */
+  .section {
+    padding: 3px 14px 2px; font-size: 11.5px; font-weight: 600; line-height: 17px;
+    color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Menu items: list rows and footer rows share geometry and highlight */
+  .item {
+    --fg: var(--text); --fg2: var(--muted);
+    height: 24px; margin: 0 5px; padding: 0 9px; border-radius: 5px;
+    color: var(--fg); overflow: hidden; min-width: 0;
+  }
+  .item:hover, .item:focus-visible {
+    background: var(--accent); --fg: var(--on-accent); --fg2: var(--on-accent-2);
+  }
+  .list {
+    display: grid; column-gap: 10px;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr) max-content;
+  }
+  .flight {
+    grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
+  }
+  .key, .snippet, .label {
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .key { font-weight: 600; font-variant-numeric: tabular-nums; max-width: 120px; }
+  .snippet { color: var(--fg2); }
+  .time {
+    justify-self: end; white-space: nowrap; font-size: 12px;
+    font-variant-numeric: tabular-nums; color: var(--fg2);
+  }
+  .empty {
+    grid-column: 1 / -1; height: 24px; margin: 0 5px; padding: 0 9px; line-height: 24px;
+    color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .footer .item { display: flex; align-items: center; }
+
+  /* Preset strip (standalone only) */
+  .presets { display: none; }
+  body.standalone .presets {
+    display: flex; position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    gap: 4px; padding: 5px; border-radius: 11px;
+    background: rgba(24,24,26,.62); border: 1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(20px) saturate(150%);
+  }
+  .presets button {
+    padding: 5px 11px; border: 0; border-radius: 7px; background: transparent;
+    font: 12px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text);
+  }
+  .presets button:hover { background: rgba(255,255,255,.12); }
+
+  /* Standalone stage: fake desktop + menu bar */
+  .menubar { display: none; }
+  body.standalone {
+    min-height: 100vh;
+    background:
+      radial-gradient(340px 240px at calc(100% - 110px) 240px,
+        rgba(255,244,228,.96) 0%, rgba(255,212,170,.72) 38%, rgba(255,190,150,0) 74%),
+      radial-gradient(900px 620px at 12% 110%, rgba(204,110,128,.9) 0%, rgba(204,110,128,0) 62%),
+      linear-gradient(165deg, #142240 0%, #2a3566 38%, #563f7c 70%, #8c4f7a 100%);
+  }
+  body.standalone .menubar {
+    display: flex; align-items: center; position: absolute; inset: 0 0 auto; height: 24px;
+    background: rgba(0,0,0,.2); backdrop-filter: blur(24px) saturate(150%);
+    font-size: 13px; color: #fff;
+  }
+  .mb-menus { display: flex; gap: 19px; padding-left: 16px; white-space: nowrap; }
+  .mb-menus b { font-weight: 700; }
+  .mb-extras { position: absolute; top: 0; right: 8px; height: 24px; display: flex; }
+  .mb-extras > span { width: 30px; height: 24px; display: grid; place-items: center; }
+  .mb-extras svg { display: block; }
+  .mb-extras .open { position: relative; }
+  .mb-extras .open::before {
+    content: ''; position: absolute; inset: 2px 1px; border-radius: 5px;
+    background: rgba(255,255,255,.24);
+  }
+  .mb-extras .open svg { position: relative; }
+  .mb-extras .clock { width: 140px; display: block; padding-right: 6px;
+                      line-height: 24px; text-align: right; white-space: nowrap; }
+  /* The plane slot's left edge sits 358 px from the right (8 + 140 + 6 × 30 + 30);
+     the menu's left edge lines up with it, NSMenu-style. */
+  body.standalone .panel {
+    position: absolute; top: 29px; right: 38px;
+    backdrop-filter: blur(30px) saturate(150%);
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.55), 0 12px 32px rgba(0,0,0,.38), 0 2px 8px rgba(0,0,0,.22);
+  }
+</style>
+</head>
+<body>
+
+<div class="menubar" aria-hidden="true">
+  <div class="mb-menus"><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></div>
+  <div class="mb-extras">
+    <span class="open">
+      <svg viewBox="0 0 16 16" width="15" height="15">
+        <path d="M1.2 7.4 L14.8 1.4 L7.7 9.3 Z" fill="#fff"/>
+        <path d="M7.7 9.3 L14.8 1.4 L10.9 14.4 Z" fill="#fff" fill-opacity=".72"/>
+        <path d="M7.7 9.3 L7.6 13 L9.4 11.2 Z" fill="#fff" fill-opacity=".5"/>
+      </svg>
+    </span>
+    <span>
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="#fff" stroke-width="1.5">
+        <circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2" fill="#fff" stroke="none"/>
+      </svg>
+    </span>
+    <span>
+      <svg viewBox="0 0 16 14" width="15" height="13" fill="#fff">
+        <rect x="1" y="8" width="3" height="5" rx="1"/><rect x="6.5" y="5" width="3" height="8" rx="1"/><rect x="12" y="1.5" width="3" height="11.5" rx="1"/>
+      </svg>
+    </span>
+    <span>
+      <svg viewBox="0 0 26 12" width="24" height="11">
+        <rect x=".75" y=".75" width="21.5" height="10.5" rx="3" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.2"/>
+        <rect x="2.4" y="2.4" width="14" height="7.2" rx="1.6" fill="#fff"/>
+        <rect x="23.4" y="4" width="1.8" height="4" rx=".9" fill="#fff" fill-opacity=".55"/>
+      </svg>
+    </span>
+    <span>
+      <svg viewBox="0 0 16 12" width="16" height="12" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round">
+        <path d="M1.5 4.2 a9.5 9.5 0 0 1 13 0"/><path d="M4 6.9 a6 6 0 0 1 8 0"/><path d="M6.4 9.6 a2.6 2.6 0 0 1 3.2 0"/>
+      </svg>
+    </span>
+    <span>
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round">
+        <circle cx="6.6" cy="6.6" r="4.6"/><path d="M10.2 10.2 L14 14"/>
+      </svg>
+    </span>
+    <span>
+      <svg viewBox="0 0 16 14" width="15" height="13" fill="none" stroke="#fff" stroke-width="1.3">
+        <rect x="1" y="1.2" width="14" height="4.8" rx="2.4"/><circle cx="12.6" cy="3.6" r="1.3" fill="#fff" stroke="none"/>
+        <rect x="1" y="8" width="14" height="4.8" rx="2.4"/><circle cx="3.4" cy="10.4" r="1.3" fill="#fff" stroke="none"/>
+      </svg>
+    </span>
+    <span class="clock">Mon Oct 12&nbsp;&nbsp;7:42 PM</span>
+  </div>
+</div>
+
+<main class="panel">
+  <div class="head">
+    <div class="who">
+      <div class="title">jiraPlane</div>
+      <div class="status" id="status"></div>
+    </div>
+    <label class="pause">
+      <span class="pause-text">Pause</span>
+      <span class="switch"><input type="checkbox" role="switch" id="pause"><span class="track"></span></span>
+    </label>
+  </div>
+  <div class="sep"></div>
+  <div class="section">Recent flights</div>
+  <div class="list" id="flights"></div>
+  <div class="sep"></div>
+  <div class="footer">
+    <div class="item" id="test"><span class="label">Test flight</span></div>
+    <div class="item" id="settings"><span class="label">Settings…</span></div>
+    <div class="item" id="quit"><span class="label">Quit</span></div>
+  </div>
+</main>
+
+<nav class="presets">
+  <button data-preset="flights">5 flights</button>
+  <button data-preset="empty">Empty</button>
+  <button data-preset="paused">Paused</button>
+  <button data-preset="error">Config error</button>
+</nav>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let shown = null;
+
+function short(at) {
+  return ago(at).replace('just now', 'now').replace(' ago', '');
+}
+
+function pick(el, onPick) {
+  el.setAttribute('role', 'button');
+  el.tabIndex = 0;
+  el.addEventListener('click', onPick);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(); }
+  });
+  return el;
+}
+
+function span(className, text) {
+  const el = document.createElement('span');
+  el.className = className;
+  el.textContent = text;
+  return el;
+}
+
+function render(state) {
+  shown = state;
+  const status = $('status');
+  status.textContent = state.configError
+    || (state.pollingPaused ? 'Paused'
+      : state.lastPollAt === null ? 'Waiting for first poll'
+      : `Last poll ${ago(state.lastPollAt)}`);
+  status.dataset.tone = state.configError ? 'error' : state.pollingPaused ? 'paused' : 'live';
+  $('pause').checked = state.pollingPaused;
+  $('pause').disabled = Boolean(state.configError);
+
+  const rows = state.flights.map((flight, i) => {
+    const row = document.createElement('div');
+    row.className = 'item flight';
+    row.append(span('key', flight.issueKey), span('snippet', flight.snippet), span('time', short(flight.at)));
+    return pick(row, () => api.replay(i));
+  });
+  if (rows.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No flights yet';
+    rows.push(empty);
+  }
+  $('flights').replaceChildren(...rows);
+}
+
+$('pause').addEventListener('change', () => api.setPaused(!shown.pollingPaused));
+pick($('test'), () => api.testFlight());
+pick($('settings'), () => api.openSettings());
+pick($('quit'), () => api.quit());
+
+// Popover bridge: preload-popover.js in Electron (#38). In a plain browser there
+// is no preload, so a local stand-in serves fake state.
+const api = window.jiraPlanePopover || standaloneApi();
+function standaloneApi() {
+  document.body.classList.add('standalone');
+  const now = Date.now();
+  // Fake data only: never real issue keys or text from the owner's Jira.
+  const FLIGHTS = [
+    { issueKey: 'PROJ-142', snippet: 'Fix login redirect', at: now - 2 * 60e3 },
+    { issueKey: 'OPS-77', snippet: 'Can you take a look at the retry logic before Friday? The staging run failed twice overnight.', at: now - 38 * 60e3 },
+    { issueKey: 'PLATFORM-10482', snippet: 'Rename retry_backoff_multiplier_for_nightly_export_job_v2', at: now - 3 * 3600e3 },
+    { issueKey: 'WEB-310', snippet: 'Swap the footer links for <FooterNav compact />', at: now - 26 * 3600e3 },
+    { issueKey: 'PROJ-139', snippet: 'Bump timeout for the batch job', at: now - 4 * 86400e3 },
+  ];
+  const LIVE = { lastPollAt: now - 12e3, pollingPaused: false, configError: null, flights: FLIGHTS };
+  const PRESETS = {
+    flights: LIVE,
+    empty: { ...LIVE, flights: [] },
+    paused: { ...LIVE, pollingPaused: true },
+    error: { lastPollAt: null, pollingPaused: false, flights: [],
+             configError: 'Polling disabled: Jira URL or token missing in .env' },
+  };
+  let state = LIVE;
+  let onState = () => {};
+  const set = (next) => { state = next; onState(state); };
+  document.querySelectorAll('[data-preset]').forEach((b) =>
+    b.addEventListener('click', () => set(PRESETS[b.dataset.preset])));
+  return {
+    onState: (cb) => { onState = cb; cb(state); },
+    setPaused: (paused) => set({ ...state, pollingPaused: paused }),
+    replay: (index) => console.log('standalone: replay', state.flights[index].issueKey),
+    testFlight: () => console.log('standalone: test flight'),
+    openSettings: () => console.log('standalone: settings'),
+    quit: () => console.log('standalone: quit'),
+  };
+}
+
+function ago(at) {
+  const s = Math.round((Date.now() - at) / 1000);
+  if (s < 10) return 'just now';
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+api.onState(render);
+</script>
+</body>
+</html>
