@@ -5,11 +5,12 @@ that: the tray, the knobs, and the two files the app writes.
 
 ## The tray
 
-Left click on the plane icon opens the panel. Its rows are **Test flight**,
-**Settings…** and **Quit**, the same as in the menu below. The status line and
-the flights list are not wired yet: they read "Waiting for first poll" and "No
-flights yet", and the Pause switch does nothing. Click outside the panel, or on
-the icon again, to close it.
+Left click on the plane icon opens the panel. Its header shows when the last
+poll finished ("Last poll 12s ago"), "Paused", or why polling is off. Its Pause
+switch is the same pause as Pause polling in the menu below. Its rows are
+**Test flight**, **Settings…** and **Quit**, the same as in the menu. The
+flights list is not wired yet: it reads "No flights yet". Click outside the
+panel, or on the icon again, to close it.
 
 Right click opens the menu:
 
@@ -19,7 +20,7 @@ Right click opens the menu:
   restarts.
 - **Pause polling** pauses both outputs. No planes and no DMs until resumed.
 - **Settings…** opens the settings window: Test flight, Pause polling, Fly on,
-  Banner style, and the version. The menu and the window always agree.
+  Banner style, and the version. The menu, the window and the panel always agree.
 - **Quit** quits, and stays quit even if you installed the login launcher.
 
 `TEST_FLIGHT=1 npm start` fires a test flight on launch, useful when you're

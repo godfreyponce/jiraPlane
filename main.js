@@ -23,6 +23,7 @@ const START_LEAD_MS = 700;
 
 let tray = null;
 let pollingPaused = false;
+let lastPollAt = null; // epoch ms of the last poll cycle that succeeded (#39); null until one does
 
 // Persisted user prefs (#10 bannerStyle, #28 flyOn): separate from state.json
 // so resetting dedup state never loses them. Any read failure → defaults.
@@ -56,10 +57,12 @@ function setPollingPaused(paused) {
   refreshSurfaces();
 }
 
-// The tray menu and the settings window show the same state (#29): the menu
-// is rebuilt on every right click (#38), so only the window needs a push.
+// The tray menu, the settings window and the popover show the same state
+// (#29, #39): the menu is rebuilt on every right click (#38), so only the
+// windows need a push.
 function refreshSurfaces() {
   pushSettingsState();
+  pushPopoverState();
 }
 
 const flightQueue = [];
@@ -375,6 +378,8 @@ function startPolling() {
     cycleInFlight = true;
     try {
       (await poller.cycle()).forEach(dispatchEvent);
+      lastPollAt = Date.now();
+      pushPopoverState();
     } catch (e) {
       console.error(`poll cycle failed: ${e.message}`);
     } finally {
@@ -469,9 +474,23 @@ ipcMain.on('settings-open-repo', () => shell.openExternal(REPO_URL));
 // Tray popover (#38): the #37 pick (popover-1-menu) as a frameless vibrancy
 // panel under the tray icon. Created hidden at launch so a click opens it at
 // once; hidden, never destroyed, on dismiss.
-const POPOVER_SIZE = { width: 320, height: 197 }; // #37 pick, measured at the empty state
+const POPOVER_SIZE = { width: 320, height: 197 }; // #37 pick at the empty state; the page fits the height (#39)
 const POPOVER_GAP = 5; // px under the icon, as on the #37 stage (24 px menu bar, panel at 29)
 let popoverWin = null;
+let popoverClock = null; // the 1 s re-send while the panel is open (#39)
+
+// The #37 contract. The list stays empty until #40.
+function popoverState() {
+  return {
+    lastPollAt, pollingPaused, flights: [],
+    configError: poller.configError && `Polling disabled: ${poller.configError.message}`,
+  };
+}
+
+function pushPopoverState() {
+  if (popoverWin && !popoverWin.isDestroyed())
+    popoverWin.webContents.send('popover-state', popoverState());
+}
 
 function createPopover() {
   popoverWin = new BrowserWindow({
@@ -491,6 +510,12 @@ function createPopover() {
                       preload: path.join(__dirname, 'preload-popover.js') },
   });
   popoverWin.on('blur', () => popoverWin.hide());
+  // While the panel is open, main re-sends the state once a second so the
+  // relative time counts up; the page runs no timer (#39). 1 s is the finest
+  // unit the page's ago() prints.
+  popoverWin.on('show', () => { popoverClock = setInterval(pushPopoverState, 1000); });
+  popoverWin.on('hide', () => clearInterval(popoverClock));
+  popoverWin.webContents.on('did-finish-load', pushPopoverState);
   // Close hides; a real quit (#31's flag) still closes it.
   popoverWin.on('close', (e) => {
     if (quitting) return;
@@ -517,6 +542,9 @@ function togglePopover(trayBounds) {
   // #22 habit: a panel in the wrong place can be explained from the log.
   console.log(`${new Date().toISOString()} popover: tray=${trayBounds.x},${trayBounds.y} ` +
     `${trayBounds.width}x${trayBounds.height} at=${x},${y} display=${describeDisplay(display)}`);
+  // A panel hidden for hours opens on the state as of now, not its last push
+  // (#39). Sent before show so the first frame is current.
+  pushPopoverState();
   popoverWin.show();
   // Below the overlays' 'screen-saver': a flight always renders above the
   // popover. After show, which can re-stack (#12).
@@ -527,6 +555,16 @@ function togglePopover(trayBounds) {
 ipcMain.on('popover-test-flight', () => { popoverWin.hide(); testFlight(); });
 ipcMain.on('popover-open-settings', () => { popoverWin.hide(); openSettings(); });
 ipcMain.on('popover-quit', () => app.quit());
+ipcMain.on('popover-set-paused', (e, paused) => {
+  if (typeof paused === 'boolean') setPollingPaused(paused);
+});
+// The page sends its panel height after each render (#39). A config error
+// wraps the status to two lines, taller than the 197 px empty state. setSize
+// keeps the top edge, so the panel grows downward from the menu bar.
+ipcMain.on('popover-fit', (e, height) => {
+  const [width, current] = popoverWin.getSize();
+  if (Number.isInteger(height) && height !== current) popoverWin.setSize(width, height);
+});
 
 // Launch at login (#29) wraps the #7 LaunchAgent: on = the plist exists.
 const LOGIN_PLIST = path.join(app.getPath('home'), 'Library', 'LaunchAgents', 'com.jiraplane.app.plist');
