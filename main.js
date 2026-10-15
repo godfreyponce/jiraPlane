@@ -66,7 +66,10 @@ function refreshSurfaces() {
 }
 
 const flightQueue = [];
-let lastFlown = null; // last real event the plane flew (#34); in-memory, null until one flies
+// The last real flights, newest first (#34 replay target, #40 popover list).
+// In-memory only; empty until a real event flies. 5 is the ticket's guess.
+const RECENT_FLIGHTS_MAX = 5;
+const recentFlights = [];
 let activeFlight = null;
 let activeFlightUrl = ''; // browse URL for the flight in the air (#9); '' = not clickable
 let teardownTimer = null;
@@ -357,10 +360,12 @@ function createFlight(event) {
 function dispatchEvent(event) {
   if ((poller.config?.plane ?? true) && event.type !== 'reassigned') {
     enqueueFlight(event);
-    // Replay (#34): real assigned/mention/comment only. Test flights and
-    // digests fly but never become the replay target.
+    // Recent flights (#34, #40): real assigned/mention/comment only. Test
+    // flights and digests fly but never enter the ring. `at` is when the poll
+    // found the event; poller events carry no Jira timestamp.
     if (!event.test && ['assigned', 'mention', 'comment'].includes(event.type)) {
-      lastFlown = event;
+      recentFlights.unshift({ ...event, at: Date.now() });
+      recentFlights.length = Math.min(recentFlights.length, RECENT_FLIGHTS_MAX);
     }
   }
   teams.sendForEvent(event).catch((e) => console.error(`teams sink failed: ${e.message}`));
@@ -408,11 +413,13 @@ function testFlight() {
   });
 }
 
-// Replay (#34) re-flies the remembered event. It goes straight to the queue,
-// not through dispatchEvent, so the Teams sink never sees it: one DM per real
+// Replay (#34, #40) re-flies a remembered event: index 0 is the native menu
+// item, any row index is the popover. It goes straight to the queue, not
+// through dispatchEvent, so the Teams sink never sees it: one DM per real
 // event, however many replays.
-function replayFlight() {
-  enqueueFlight(lastFlown);
+function replayFlight(index = 0) {
+  const flight = recentFlights[index];
+  if (flight) enqueueFlight(flight);
 }
 
 // Settings window (#29): a normal titled window, none of the overlay
@@ -479,10 +486,11 @@ const POPOVER_GAP = 5; // px under the icon, as on the #37 stage (24 px menu bar
 let popoverWin = null;
 let popoverClock = null; // the 1 s re-send while the panel is open (#39)
 
-// The #37 contract. The list stays empty until #40.
+// The #37 contract. flights is the ring in contract shape, newest first (#40).
 function popoverState() {
   return {
-    lastPollAt, pollingPaused, flights: [],
+    lastPollAt, pollingPaused,
+    flights: recentFlights.map(({ issueKey, snippet, at }) => ({ issueKey, snippet, at })),
     configError: poller.configError && `Polling disabled: ${poller.configError.message}`,
   };
 }
@@ -553,6 +561,13 @@ function togglePopover(trayBounds) {
 
 // Popover rows act like menu items: the panel closes, then the action runs.
 ipcMain.on('popover-test-flight', () => { popoverWin.hide(); testFlight(); });
+// A row is a menu item: the panel closes, then the flight replays (#40). The
+// index is the row's position in the last pushed list; anything else is ignored.
+ipcMain.on('popover-replay', (e, index) => {
+  if (!Number.isInteger(index) || !recentFlights[index]) return;
+  popoverWin.hide();
+  replayFlight(index);
+});
 ipcMain.on('popover-open-settings', () => { popoverWin.hide(); openSettings(); });
 ipcMain.on('popover-quit', () => app.quit());
 ipcMain.on('popover-set-paused', (e, paused) => {
@@ -602,8 +617,8 @@ function setLaunchAtLogin(on) {
 function buildMenu() {
   return Menu.buildFromTemplate([
     { label: 'Test flight', click: testFlight },
-    { label: lastFlown ? `Replay ${lastFlown.issueKey}` : 'Replay',
-      enabled: !!lastFlown, click: replayFlight },
+    { label: recentFlights[0] ? `Replay ${recentFlights[0].issueKey}` : 'Replay',
+      enabled: recentFlights.length > 0, click: () => replayFlight() },
     {
       label: 'Banner style',
       submenu: [

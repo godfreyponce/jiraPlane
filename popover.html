@@ -239,6 +239,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 let shown = null;
+let shownFlightsKey = null; // signature of the rows on screen; a changed key rebuilds them (#40)
 
 function short(at) {
   return ago(at).replace('just now', 'now').replace(' ago', '');
@@ -272,19 +273,30 @@ function render(state) {
   $('pause').checked = state.pollingPaused;
   $('pause').disabled = Boolean(state.configError);
 
-  const rows = state.flights.map((flight, i) => {
-    const row = document.createElement('div');
-    row.className = 'item flight';
-    row.append(span('key', flight.issueKey), span('snippet', flight.snippet), span('time', short(flight.at)));
-    return pick(row, () => api.replay(i));
-  });
-  if (rows.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.textContent = 'No flights yet';
-    rows.push(empty);
+  // Main re-sends the state every second while the panel is open (#39). Rows
+  // are rebuilt only when the list changes, so a click that spans a push still
+  // lands on the row it started on; between changes only the times move.
+  const flightsKey = state.flights.map((f) => `${f.at}:${f.issueKey}`).join('\n');
+  if (flightsKey === shownFlightsKey) {
+    document.querySelectorAll('#flights .time').forEach((el, i) => {
+      el.textContent = short(state.flights[i].at);
+    });
+  } else {
+    shownFlightsKey = flightsKey;
+    const rows = state.flights.map((flight, i) => {
+      const row = document.createElement('div');
+      row.className = 'item flight';
+      row.append(span('key', flight.issueKey), span('snippet', flight.snippet), span('time', short(flight.at)));
+      return pick(row, () => api.replay(i));
+    });
+    if (rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'No flights yet';
+      rows.push(empty);
+    }
+    $('flights').replaceChildren(...rows);
   }
-  $('flights').replaceChildren(...rows);
   api.fit(document.querySelector('.panel').offsetHeight);
 }
 

@@ -7,10 +7,12 @@ that: the tray, the knobs, and the two files the app writes.
 
 Left click on the plane icon opens the panel. Its header shows when the last
 poll finished ("Last poll 12s ago"), "Paused", or why polling is off. Its Pause
-switch is the same pause as Pause polling in the menu below. Its rows are
-**Test flight**, **Settings…** and **Quit**, the same as in the menu. The
-flights list is not wired yet: it reads "No flights yet". Click outside the
-panel, or on the icon again, to close it.
+switch is the same pause as Pause polling in the menu below. **Recent flights**
+lists the last 5 real flights, newest first: issue key, snippet, and how long
+ago the poll found it. Click a row to fly it again (no Teams DM). Test flights
+and digests are not listed, and the list empties on restart. Below it are
+**Test flight**, **Settings…** and **Quit**, the same as in the menu. Click
+outside the panel, or on the icon again, to close it.
 
 Right click opens the menu:
 
