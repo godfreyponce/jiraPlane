@@ -5,25 +5,24 @@ that: the tray, the knobs, and the two files the app writes.
 
 ## The tray
 
-Left click on the plane icon opens the panel. Its header shows when the last
-poll finished ("Last poll 12s ago"), "Paused", or why polling is off. Its Pause
-switch is the same pause as Pause polling in the menu below. **Recent flights**
-lists the last 5 real flights, newest first: issue key, snippet, and how long
-ago the poll found it. Click a row to fly it again (no Teams DM). Test flights
-and digests are not listed, and the list empties on restart. Below it are
-**Test flight**, **Settings…** and **Quit**, the same as in the menu. Click
-outside the panel, or on the icon again, to close it.
-
-Right click opens the menu:
+Click the plane icon (either button) to open the panel. Its header shows when
+the last poll finished ("Last poll 12s ago"), "Paused", or why polling is off.
+Its Pause switch pauses both outputs: no planes and no DMs until resumed. The
+same switch is in Settings…. **Recent flights** lists the last 5 real flights,
+newest first: issue key, snippet, and how long ago the poll found it. Click a
+row to fly it again (no Teams DM). Test flights and digests are not listed,
+and the list empties on restart. Below it:
 
 - **Test flight** fires a fake plane (PROJ-142, "Fix login redirect") without
   touching Jira. If a Teams webhook is set, it sends a [TEST]-marked DM too.
-- **Banner style** picks Cargo tag or Skywriter. The choice persists across
-  restarts.
-- **Pause polling** pauses both outputs. No planes and no DMs until resumed.
-- **Settings…** opens the settings window: Test flight, Pause polling, Fly on,
-  Banner style, and the version. The menu, the window and the panel always agree.
+- **Settings…** opens the settings window: Test flight, Pause polling, Fly on
+  (all displays or main only), Banner style (Cargo tag or Skywriter), launch
+  at login, and the version. Fly on and Banner style persist across restarts.
+  The window and the panel always agree.
 - **Quit** quits, and stays quit even if you installed the login launcher.
+
+Click outside the panel, or on the icon again, to close it. There is no
+separate right-click menu.
 
 `TEST_FLIGHT=1 npm start` fires a test flight on launch, useful when you're
 poking at plane.html.

@@ -1,4 +1,4 @@
-const { app, Tray, Menu, BrowserWindow, screen, nativeImage, shell, ipcMain } = require('electron');
+const { app, Tray, BrowserWindow, screen, nativeImage, shell, ipcMain } = require('electron');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -57,9 +57,8 @@ function setPollingPaused(paused) {
   refreshSurfaces();
 }
 
-// The tray menu, the settings window and the popover show the same state
-// (#29, #39): the menu is rebuilt on every right click (#38), so only the
-// windows need a push.
+// The settings window and the popover show the same state (#29, #39), so a
+// change pushes to both.
 function refreshSurfaces() {
   pushSettingsState();
   pushPopoverState();
@@ -413,11 +412,10 @@ function testFlight() {
   });
 }
 
-// Replay (#34, #40) re-flies a remembered event: index 0 is the native menu
-// item, any row index is the popover. It goes straight to the queue, not
-// through dispatchEvent, so the Teams sink never sees it: one DM per real
-// event, however many replays.
-function replayFlight(index = 0) {
+// Replay (#34, #40) re-flies a remembered event, picked by popover row index.
+// It goes straight to the queue, not through dispatchEvent, so the Teams
+// sink never sees it: one DM per real event, however many replays.
+function replayFlight(index) {
   const flight = recentFlights[index];
   if (flight) enqueueFlight(flight);
 }
@@ -614,40 +612,6 @@ function setLaunchAtLogin(on) {
   });
 }
 
-function buildMenu() {
-  return Menu.buildFromTemplate([
-    { label: 'Test flight', click: testFlight },
-    { label: recentFlights[0] ? `Replay ${recentFlights[0].issueKey}` : 'Replay',
-      enabled: recentFlights.length > 0, click: () => replayFlight() },
-    {
-      label: 'Banner style',
-      submenu: [
-        { label: 'Cargo tag', type: 'radio', checked: bannerStyle === 'cargo',
-          click: () => setBannerStyle('cargo') },
-        { label: 'Skywriter', type: 'radio', checked: bannerStyle === 'skywriter',
-          click: () => setBannerStyle('skywriter') },
-      ],
-    },
-    {
-      label: 'Fly on',
-      submenu: [
-        { label: 'All displays', type: 'radio', checked: flyOn === 'all',
-          click: () => setFlyOn('all') },
-        { label: 'Main display', type: 'radio', checked: flyOn === 'main',
-          click: () => setFlyOn('main') },
-      ],
-    },
-    { type: 'separator' },
-    {
-      label: pollingPaused ? 'Resume polling' : 'Pause polling',
-      click: () => setPollingPaused(!pollingPaused),
-    },
-    { type: 'separator' },
-    { label: 'Settings…', click: openSettings },
-    { label: 'Quit', click: () => app.quit() },
-  ]);
-}
-
 app.whenReady().then(() => {
   app.dock.hide();
   const icon = nativeImage.createFromPath(
@@ -658,14 +622,11 @@ app.whenReady().then(() => {
   // Otherwise a fast second click arrives as 'double-click', not 'click', and
   // the panel ignores it.
   tray.setIgnoreDoubleClickEvents(true);
-  // Left click toggles the popover (#38); right click keeps the native menu
-  // until #41. Never setContextMenu: on macOS a tray context menu opens on
-  // left click too, and 'click' is never emitted.
+  // Either click toggles the popover (#38, #41): the tray has one surface.
+  // Never setContextMenu: on macOS a tray context menu opens on left click
+  // too, and 'click' is never emitted.
   tray.on('click', (e, bounds) => togglePopover(bounds));
-  tray.on('right-click', () => {
-    popoverWin.hide();
-    tray.popUpContextMenu(buildMenu());
-  });
+  tray.on('right-click', (e, bounds) => togglePopover(bounds));
   createPopover();
   // Display changes (#22): a flight keeps the display set it was created
   // with. Rebuilding overlays mid-flight would drop the #11/#15 drag state,
