@@ -11,6 +11,40 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Popover recent flights: last 5 real flights, click a row to replay — #40 (2026-10-15) — ACCEPTED & CLOSED; commit 4483f77
+
+Fourth slice of #36. #34's single remembered event (`lastFlown`) became a ring of at most 5,
+`recentFlights`, newest first (`RECENT_FLIGHTS_MAX`). Only real assigned / mention / comment
+events enter it; test flights, digests and reassigned fly (or not) but are never listed.
+Each entry is stamped `at: Date.now()` when the poll dispatches it: poller events carry no
+Jira timestamp, so a row's time is when the app found the event. The native Replay item
+reads `recentFlights[0]`; the popover state's `flights` is the ring in the #37 contract
+shape. A row click sends its index over `'popover-replay'`; main hides the panel and
+replays through the queue only, so no Teams DM. The page rebuilds rows only when the
+list's signature (`at:issueKey` per row) changes; on the 1 s push it rewrites the times in
+place, so the row under a click survives. No CSS or markup change: the #37 pick already
+held the rows. In-memory only; the list empties on restart.
+
+- **Native unknowns:** U1 (hover after a rebuild) was not observable by the agent and not
+  reported at gate 2.
+- **Proven:** static checks (`lastFlown` gone, no `innerHTML`, no page timers); standalone
+  browser checks: 5 rows at 293 px, a click logs the right row, the same row element across
+  an unchanged re-render, a sixth flight on top with the oldest gone, the empty state at
+  197 px; live test flights leave "No flights yet" (worktree run and the post-merge run on
+  main, panel at layer 101, 320 × 197, "Last poll just now"); bad replay indexes fly
+  nothing. Fresh review: 0 Critical, 0 Important. The owner accepted at gate 2.
+- **What the plan got wrong:** its `pgrep` pattern never matches a worktree's Electron path;
+  its live run assumed a `.env` the worktree does not have (the run showed the config-error
+  header instead); it expected the panel still open 30 s after launch, but in that session
+  the panel hid itself ~3-8 s after `OPEN_POPOVER` showed it, and main's unchanged code did
+  the same (control runs), so the evidence was a screenshot taken while it was up.
+- **Deferred minors:** a click in the same instant a new flight lands replays the new top
+  flight (rows are addressed by index, plan decision 2; the fix is to send `at`); the
+  handler comment "anything else is ignored" overstates the guard. `npm install` rewrites
+  `package-lock.json`'s license field (UNLICENSED vs package.json's MIT); reverted, not filed.
+
+---
+
 ## Popover status header: live last poll + pause switch — #39 (2026-10-13) — ACCEPTED & CLOSED; commit 2a7b921
 
 Third slice of #36. The popover header shows real poll state: "Last poll 12s ago", "Paused",
