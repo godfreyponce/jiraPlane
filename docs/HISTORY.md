@@ -11,6 +11,45 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Popover status header: live last poll + pause switch — #39 (2026-10-13) — ACCEPTED & CLOSED; commit 2a7b921
+
+Third slice of #36. The popover header shows real poll state: "Last poll 12s ago", "Paused",
+or "Polling disabled: <reason>" in red. Until a poll succeeds it keeps "Waiting for first
+poll". `lastPollAt` is the last poll that succeeded, so failing polls let the age keep
+growing. The Pause switch calls `setPollingPaused()`, the same flag as the native menu item
+and the #29 settings window, and `refreshSurfaces()` now pushes to both windows. Main owns all
+state and all timing: it sends `popover-state` before `show()`, on `did-finish-load`, after
+each successful poll, on every pause change, and every 1 s while the panel is open
+(`popoverClock`, started on `'show'`, cleared on `'hide'`). The page runs no timers. After
+each render the page sends its panel height (`popover-fit`) and main resizes the window, top
+edge fixed: 197 empty, 212 with the config error. `flights` stays `[]` for #40.
+
+- **Native unknowns:** U1 (`setSize` on a non-resizable panel) and U2 (panel `'show'` /
+  `'hide'` events) were not hit, so neither fix shipped.
+- **Proven:** the static checks (`node --check`, no `innerHTML`, no page timers); the
+  standalone sizes 197 / 212 / 293 (empty, error, fake rows); run 1 crops counting "just now"
+  up to 50s and back on every poll, the panel at layer 101; run 2's config error at 212 high,
+  red over two lines, Pause dimmed, Quit row whole; run 3 "Waiting for first poll" after
+  failed polls (read over CDP while the screen was locked, then shot); run 4 the popover
+  Pause showing in the settings window and a settings resume showing "Last poll 26s ago" in
+  the popover; the `TEST_FLIGHT=1` full check; and the owner's eight-item gate 2 pass.
+- **Review:** 0 Critical. The one Important (a reopened panel might paint its pre-hide frame
+  for 1–3 frames) had no red command: the agent can't click the tray, and the inspector route
+  recorded only black frames. It went to gate 2 item 5 and the owner passed it. If it ever
+  shows, the fix is `backgroundThrottling: false` on the popover window.
+- **What the plan got wrong:** it dropped the preload's empty-state seed but kept the Pause
+  handler reading `shown.pollingPaused`, so a click before the first push throws (minor
+  below). Its runs had no real tray click, so the reopen frame was left to the owner.
+- **Found at gate 2, filed as #47:** with two displays, the panel opens on the display whose
+  menu bar was last active, not the one clicked. The tray click bounds name the wrong menu
+  bar. That is #38's placement code, unchanged here.
+- **Deferred minors:** Pause clicked before the first push throws (fix:
+  `api.setPaused($('pause').checked)`, the settings.html pattern); the `'show'` handler does
+  not clear the clock before `setInterval`, so two shows without a hide would leak a 1 s
+  timer; usage.md says the last poll "finished" where it means "succeeded".
+
+---
+
 ## Tray popover shell — #38 (2026-10-13) — ACCEPTED & CLOSED; commit b645203
 
 Second slice of #36. Left click on the tray icon opens `popover.html`, the #37 pick, as a
