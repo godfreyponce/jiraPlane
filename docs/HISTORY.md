@@ -11,6 +11,31 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## package-lock.json license matches package.json — #49 (2026-10-16) — ACCEPTED & CLOSED; commit e0eb995
+
+One regenerated line. `package-lock.json`'s root entry said `"license": "UNLICENSED"` from the
+scaffold commit (`f916268`); `package.json` has said `MIT` since #8 (`d63a5e4`), so every
+`npm install` on a fresh checkout rewrote the line and left an unrelated diff. `npm install`
+(npm 11.11.0, node v24.14.1) wrote `"license": "MIT"` at line 10; nothing else in the lockfile
+moved. ONBOARDING §7's `git checkout package-lock.json` recovery step stays: a coworker who
+already ran `npm install` holds the MIT edit locally, and the pull that brings this commit still
+refuses. #35's rewrite drops the step once everyone has pulled past it.
+
+- **Proven:** worktree `git diff --stat` → `1 file changed, 1 insertion(+), 1 deletion(-)`, the
+  one hunk at line 10. Fresh-checkout proxy: the two manifests copied to a temp dir, `npm install
+  --package-lock-only --ignore-scripts`, `diff` → exit 0; a second `npm install` in the worktree
+  → `up to date`, stat unchanged. The test flight was skipped by owner choice: the login
+  instance (pid 86609) held the single-instance lock (`jiraPlane already running — exiting this
+  instance`, exit 0); the worktree's electron is v43.2.0 and byte-identical (`cmp`) to the
+  binary the login instance was running, and the diff changes no version, `resolved`, or
+  `integrity` field.
+- **Fresh review:** 0 Critical, 0 Important, 0 Minor. The reviewer also ran a full
+  `npm install --ignore-scripts` in an empty temp dir and `npx npm@10 install
+  --package-lock-only`; both left the lockfile byte-identical, so npm 10 does not bring the
+  drift back.
+
+No `Build P/P pages` figure: this repo has no build check (AGENTS.md `# Verification scope`).
+
 ## ONBOARDING update path: pull, install, restart — #45 (2026-10-16) — ACCEPTED & CLOSED; commit ce0c222
 
 Docs only. `docs/ONBOARDING.md` gains `## 7. Update`: `git pull`, `npm install`, then restart
