@@ -10,4 +10,5 @@ contextBridge.exposeInMainWorld('jiraPlanePopover', {
   testFlight: () => ipcRenderer.send('popover-test-flight'),
   openSettings: () => ipcRenderer.send('popover-open-settings'),
   quit: () => ipcRenderer.send('popover-quit'),
+  update: () => ipcRenderer.send('popover-update'),
 });
