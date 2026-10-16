@@ -160,6 +160,6 @@ still running code from before the popover (#41) shows a plain menu instead.
   calendar reminder for the expiry date from step 2.
 - **No polling while your Mac sleeps.** On wake the next cycle catches up on
   assignment changes fully; comments older than 30 minutes are dropped by design.
-- **Pause polling** in the tray pauses both outputs — no planes and no DMs
-  until resumed.
+- **Pause** (the switch in the tray panel, or *Pause polling* in Settings…)
+  pauses both outputs — no planes and no DMs until resumed.
 - A DM failure is logged and dropped — there's no retry queue.

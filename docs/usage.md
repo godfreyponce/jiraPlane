@@ -61,8 +61,8 @@ comment snippet in DMs).
 
 - `state.json` is the dedup memory: what the poller has already seen. Delete it
   to re-seed from scratch; the next run seeds silently, no backlog flood.
-- `settings.json` holds your prefs, currently the banner style. It is separate
-  from state.json on purpose: resetting dedup keeps your choice.
+- `settings.json` holds your prefs: Banner style and Fly on. It is separate
+  from state.json on purpose: resetting dedup keeps your choices.
 
 Both are gitignored.
 

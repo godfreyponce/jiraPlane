@@ -58,8 +58,9 @@ https://github.com/user-attachments/assets/c45c1f18-71c9-471e-9c67-ee3946005ff7
 The physics is what lets the plane hold the tag with weight and gravity and an
 air-drag feel, all tuned by hand on feel sliders.
 
-There's a second banner style in the tray: Skywriter writes the message as smoke
-letters along the flight path, laid down the moment the tail crosses each one.
+There's a second banner style, picked in Settings…: Skywriter writes the message
+as smoke letters along the flight path, laid down the moment the tail crosses
+each one.
 
 https://github.com/user-attachments/assets/038435b2-f935-4080-83bd-ff11265509f1
 
