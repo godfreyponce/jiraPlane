@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const poller = require('./poller');
 const teams = require('./teams');
+const updater = require('./updater');
 
 // Login-launch (#7) means an instance may already be running when the owner
 // starts a dev `npm start` — two pollers would double-fly and double-DM.
@@ -98,7 +99,11 @@ function enqueueFlight(event) {
 }
 
 function flyNext() {
-  if (quitting || activeFlight || flightQueue.length === 0) return;
+  if (quitting) return;
+  // A flight that started after the checkout would load the new plane.html
+  // under the old main.js (#48): the update waits for the air to clear.
+  if (update?.phase === 'restarting' && !activeFlight) return restartApp();
+  if (activeFlight || flightQueue.length === 0 || holdingFlights()) return;
   const event = flightQueue.shift();
   const wins = createFlight(event);
   activeFlight = wins;
@@ -490,6 +495,7 @@ function popoverState() {
     lastPollAt, pollingPaused,
     flights: recentFlights.map(({ issueKey, snippet, at }) => ({ issueKey, snippet, at })),
     configError: poller.configError && `Polling disabled: ${poller.configError.message}`,
+    update,
   };
 }
 
@@ -578,6 +584,74 @@ ipcMain.on('popover-fit', (e, height) => {
   const [width, current] = popoverWin.getSize();
   if (Number.isInteger(height) && height !== current) popoverWin.setSize(width, height);
 });
+ipcMain.on('popover-update', () => { popoverWin.hide(); runUpdate(); });
+
+// Update check (#48): a new vX.Y.Z tag shows in the popover; one click checks
+// it out, runs npm install, and restarts once no plane is in the air.
+const UPDATE_CHECK_MS = 24 * 60 * 60 * 1000; // "once a day" is #48's guess
+let update = null;        // the popover contract field (#48)
+let updateBusy = false;   // one check at a time
+let restartStarted = false;
+
+function setUpdate(next) {
+  update = next;
+  pushPopoverState();
+}
+
+function holdingFlights() {
+  return Boolean(update) && ['installing', 'restarting'].includes(update.phase);
+}
+
+async function checkForUpdate() {
+  if (updateBusy || holdingFlights() || update?.phase === 'failed') return;
+  updateBusy = true;
+  try {
+    const tag = await updater.check(__dirname);
+    const reason = tag && await updater.blocker(__dirname);
+    if (holdingFlights()) return; // the click landed while this check ran
+    console.log(`${new Date().toISOString()} update: check: ` +
+      `${!tag ? 'nothing newer' : reason ? `${tag} blocked (${reason})` : `${tag} available`}`);
+    setUpdate(tag ? { tag, phase: reason ? 'blocked' : 'available', detail: reason } : null);
+  } catch (e) {
+    console.log(`${new Date().toISOString()} update: check failed: ${e.message}`);
+  } finally {
+    updateBusy = false;
+  }
+}
+
+async function runUpdate() {
+  if (update?.phase !== 'available') return;
+  const { tag } = update;
+  // Installing first: it holds flights and turns a second click into a no-op.
+  setUpdate({ tag, phase: 'installing', detail: '' });
+  try {
+    // Edits made since the check are refused, never touched.
+    const reason = await updater.blocker(__dirname);
+    if (reason) setUpdate({ tag, phase: 'blocked', detail: reason });
+    else {
+      await updater.install(__dirname, tag);
+      setUpdate({ tag, phase: 'restarting', detail: '' });
+    }
+  } catch (e) {
+    console.error(`${new Date().toISOString()} update: ${tag} failed: ${e.message}`);
+    setUpdate({ tag, phase: 'failed', detail: e.message });
+  }
+  flyNext();
+}
+
+// The login job exits non-zero so KeepAlive (SuccessfulExit=false) starts it
+// again under its own label; a dev run relaunches itself.
+function restartApp() {
+  if (restartStarted) return;
+  restartStarted = true;
+  withLoginJob((notLoaded, isLoginJob) => {
+    console.log(`${new Date().toISOString()} update: restarting as ` +
+      `${isLoginJob ? 'login job (exit 1)' : 'dev run (relaunch)'}`);
+    if (isLoginJob) return app.exit(1);
+    app.relaunch();
+    app.exit(0);
+  });
+}
 
 // Launch at login (#29) wraps the #7 LaunchAgent: on = the plist exists.
 const LOGIN_PLIST = path.join(app.getPath('home'), 'Library', 'LaunchAgents', 'com.jiraplane.app.plist');
@@ -593,12 +667,10 @@ function setLaunchAtLogin(on) {
     loginToggleBusy = false;
     pushSettingsState();
   };
-  // launchctl print fails (exit 113) when the job is not loaded.
-  execFile('/bin/launchctl', ['print', LOGIN_SERVICE], (notLoaded, stdout) => {
+  withLoginJob((notLoaded, isLoginJob) => {
     // #7 gotcha: if this process IS the login job, bootout would SIGTERM it
     // and leave zero instances. Only the plist changes; the loaded job stays
     // until logout, so a crash before then still restarts the app.
-    const isLoginJob = !notLoaded && new RegExp(`^\\s*pid = ${process.pid}$`, 'm').test(stdout);
     if (on) {
       // The full install bootstraps the job: launchd's new instance loses the
       // single-instance lock to this one and exits 0, and KeepAlive
@@ -609,6 +681,14 @@ function setLaunchAtLogin(on) {
       if (notLoaded || isLoginJob) return done();
       execFile('/bin/launchctl', ['bootout', LOGIN_SERVICE], done);
     }
+  });
+}
+
+// isLoginJob: this process is the loaded com.jiraplane.app job (#29's test).
+function withLoginJob(cb) {
+  // launchctl print fails (exit 113) when the job is not loaded.
+  execFile('/bin/launchctl', ['print', LOGIN_SERVICE], (notLoaded, stdout) => {
+    cb(notLoaded, !notLoaded && new RegExp(`^\\s*pid = ${process.pid}$`, 'm').test(stdout));
   });
 }
 
@@ -640,6 +720,9 @@ app.whenReady().then(() => {
     if (changed.includes('bounds')) logDisplay('bounds', d);
   });
   startPolling();
+  // UPDATE_NOW=1 clicks Update as soon as the launch check offers one (#48).
+  checkForUpdate().then(() => { if (process.env.UPDATE_NOW === '1') runUpdate(); });
+  setInterval(checkForUpdate, UPDATE_CHECK_MS);
   if (process.env.TEST_FLIGHT === '1') testFlight();
   if (process.env.OPEN_SETTINGS === '1') openSettings();
 });

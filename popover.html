@@ -1,5 +1,7 @@
 <!-- popover (#38): the #37 pick, popover-1-menu. 320 × 293 at 5 rows, 197 empty, 212 config
-     error (measured). main.js POPOVER_SIZE is the empty size; render() sends the real height (#39). -->
+     error (measured). main.js POPOVER_SIZE is the empty size; render() sends the real height (#39).
+     Update line (#48, pick update-2-head) at 5 rows: 313 available, 310 installing/restarting,
+     325 blocked/failed (measured). -->
 <!DOCTYPE html>
 <html lang="en">
 <!--
@@ -40,7 +42,11 @@
   .sep { height: 1px; margin: 5px 12px; background: var(--hairline); }
 
   /* Header */
-  .head { display: flex; align-items: center; gap: 12px; padding: 6px 14px 7px; }
+  /* Two columns: who | Pause. The #48 update line and button take row 2 when present. */
+  .head {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+    column-gap: 12px; row-gap: 2px; padding: 6px 14px 7px;
+  }
   .who { flex: 1; min-width: 0; }
   .title {
     font-size: 13px; font-weight: 600; line-height: 16px;
@@ -106,6 +112,26 @@
     color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .footer .item { display: flex; align-items: center; }
+
+  /* Update line (#48, pick update-2-head): #update is display: contents, so its line
+     lands under .who and its button under Pause. */
+  :root { --accent-text: #8ea6ee; }
+  #update { display: contents; }
+  .update-line {
+    grid-column: 1; min-width: 0; font-size: 11.5px; line-height: 15px; color: var(--accent-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #update[data-tone="busy"] .update-line { color: var(--muted); }
+  #update[data-tone="error"] .update-line {
+    grid-column: 1 / -1; color: var(--error); white-space: normal; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  }
+  .update-btn {
+    grid-column: 2; justify-self: end; padding: 1px 9px; border-radius: 5px;
+    background: var(--accent); color: var(--on-accent);
+    font-size: 11.5px; font-weight: 600; line-height: 16px;
+  }
+  .update-btn:hover, .update-btn:focus-visible { background: #3d66d4; }
 
   /* Preset strip (standalone only) */
   .presets { display: none; }
@@ -234,6 +260,11 @@
   <button data-preset="empty">Empty</button>
   <button data-preset="paused">Paused</button>
   <button data-preset="error">Config error</button>
+  <button data-preset="update">Update</button>
+  <button data-preset="installing">Installing</button>
+  <button data-preset="restarting">Restarting</button>
+  <button data-preset="blocked">Blocked</button>
+  <button data-preset="failed">Failed</button>
 </nav>
 
 <script>
@@ -261,6 +292,40 @@ function span(className, text) {
   el.textContent = text;
   return el;
 }
+
+// Update line (#48). One element #update, rebuilt only when its content changes,
+// so the 1 s push (#39) never swaps the button out from under a click.
+let shownUpdateKey = '';
+function updateLine(update) {
+  switch (update.phase) {
+    case 'available':  return `${update.tag} available`;
+    case 'installing': return `Updating to ${update.tag}…`;
+    case 'restarting': return 'Restarting after this flight…';
+    case 'blocked':    return `Can't update: ${update.detail}. See ONBOARDING § 7.`;
+    case 'failed':     return `Update failed: ${update.detail}. See ONBOARDING § 7.`;
+  }
+}
+function updateTone(update) {
+  return update.phase === 'available' ? 'available'
+    : update.phase === 'blocked' || update.phase === 'failed' ? 'error' : 'busy';
+}
+function renderUpdate(update) {
+  const key = update ? `${update.phase}|${update.tag}|${update.detail}` : '';
+  if (key === shownUpdateKey) return;
+  shownUpdateKey = key;
+  $('update')?.remove();
+  if (update) placeUpdate(buildUpdate(update));
+}
+
+function buildUpdate(update) {
+  const el = document.createElement('div');
+  el.id = 'update';
+  el.dataset.tone = updateTone(update);
+  el.append(span('update-line', updateLine(update)));
+  if (update.phase === 'available') el.append(pick(span('update-btn', 'Update'), () => api.update()));
+  return el;
+}
+function placeUpdate(el) { document.querySelector('.head').append(el); }
 
 function render(state) {
   shown = state;
@@ -297,6 +362,7 @@ function render(state) {
     }
     $('flights').replaceChildren(...rows);
   }
+  renderUpdate(state.update);
   api.fit(document.querySelector('.panel').offsetHeight);
 }
 
@@ -319,17 +385,23 @@ function standaloneApi() {
     { issueKey: 'WEB-310', snippet: 'Swap the footer links for <FooterNav compact />', at: now - 26 * 3600e3 },
     { issueKey: 'PROJ-139', snippet: 'Bump timeout for the batch job', at: now - 4 * 86400e3 },
   ];
-  const LIVE = { lastPollAt: now - 12e3, pollingPaused: false, configError: null, flights: FLIGHTS };
+  const LIVE = { lastPollAt: now - 12e3, pollingPaused: false, configError: null, flights: FLIGHTS, update: null };
   const PRESETS = {
     flights: LIVE,
     empty: { ...LIVE, flights: [] },
     paused: { ...LIVE, pollingPaused: true },
-    error: { lastPollAt: null, pollingPaused: false, flights: [],
+    error: { lastPollAt: null, pollingPaused: false, flights: [], update: null,
              configError: 'Polling disabled: Jira URL or token missing in .env' },
+    update:     { ...LIVE, update: { tag: 'v0.2.0', phase: 'available',  detail: '' } },
+    installing: { ...LIVE, update: { tag: 'v0.2.0', phase: 'installing', detail: '' } },
+    restarting: { ...LIVE, update: { tag: 'v0.2.0', phase: 'restarting', detail: '' } },
+    blocked:    { ...LIVE, update: { tag: 'v0.2.0', phase: 'blocked',    detail: 'local edits in main.js, popover.html' } },
+    failed:     { ...LIVE, update: { tag: 'v0.2.0', phase: 'failed',     detail: 'npm ERR! code E404' } },
   };
   let state = LIVE;
   let onState = () => {};
   const set = (next) => { state = next; onState(state); };
+  Object.defineProperty(window, 'state', { get: () => state }); // console checks: render(state)
   document.querySelectorAll('[data-preset]').forEach((b) =>
     b.addEventListener('click', () => set(PRESETS[b.dataset.preset])));
   return {
@@ -339,6 +411,7 @@ function standaloneApi() {
     testFlight: () => console.log('standalone: test flight'),
     openSettings: () => console.log('standalone: settings'),
     quit: () => console.log('standalone: quit'),
+    update: () => { console.log('standalone: update'); set({ ...state, update: { ...state.update, phase: 'installing' } }); },
     fit: () => {}, // a browser tab has no window to size
   };
 }

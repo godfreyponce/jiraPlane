@@ -82,7 +82,9 @@ npm start
 ```
 
 A plane icon lands in the menu bar. Click it → **Test flight** to see the plane
-(and, if you set the webhook, a test DM). The first poll cycle seeds silently —
+(and, if you set the webhook, a test DM). When a new version is tagged, the same panel
+shows `vX.Y.Z available` with an **Update** button: one click installs it and restarts
+the app once no plane is flying. The first poll cycle seeds silently —
 it records what it currently sees without notifying, so you don't get flooded
 with backlog. To re-seed from scratch later, delete `state.json`.
 
@@ -97,19 +99,30 @@ stays quit until next login. Uninstall commands are in the script header.
 
 ## 7. Update
 
-New features reach you only when you pull and restart. The app does not check for
-updates, and a pull on its own changes nothing: the running instance keeps the old
-code until it restarts.
+The app checks for a new version at launch and once a day. When one is tagged, the
+panel (click the plane icon) shows `vX.Y.Z available` and an **Update** button. Click
+it. The app installs the new version and restarts itself once no plane is flying.
+Nothing changes until you click.
+
+Use the steps below instead when the panel says `Can't update` (it names why), when it
+says `Update failed`, or when your copy is older than the Update button.
 
 ```bash
-git pull
+git fetch --tags
 ```
 
-You should see a list of changed files, or `Already up to date.`
+You should see a list of new tags, or nothing if there are none.
+
+```bash
+git checkout "$(git tag -l 'v*' --sort=-v:refname | head -1)"
+```
+
+You should see `HEAD is now at …`. A note about "detached HEAD" is expected: the app runs
+from a tagged version, not from a branch.
 
 If it stops with `Your local changes to the following files would be overwritten by
-merge` and names `package-lock.json`, an earlier `npm install` edited that file. Throw
-the edit away, then run `git pull` again.
+checkout` and names `package-lock.json`, an earlier `npm install` edited that file. Throw
+the edit away, then run the `git checkout` line above again.
 
 ```bash
 git checkout package-lock.json
