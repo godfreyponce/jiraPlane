@@ -11,6 +11,39 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Popover contract: right click opens the popover, native menu deleted — #41 (2026-10-15) — ACCEPTED & CLOSED; commit 4dddfa1
+
+Fifth and last slice of #36. The tray now has one surface: right click calls the same
+`togglePopover(bounds)` as left click, so a right click on a closed panel opens it and on an
+open panel closes it. `buildMenu()` and the `Menu` import are gone, with the native menu's
+Replay, Banner style, Fly on and Pause polling items. Every one already had a home: Test
+flight, Settings…, Quit and the replay rows in the popover (#38, #40); Pause in the popover
+header and the settings window (#39, #29); Banner style and Fly on in the settings window
+(#29). `replayFlight(index)` lost its `index = 0` default: the popover row handler is its
+only caller. Done-when 1 (Settings… opens the #29 window, second click refocuses) had
+already shipped in #38. Pause stays session-only (#39); `saveSettings` is untouched.
+`docs/usage.md`'s tray section now describes the one panel.
+
+- **Native unknowns:** U1 (right click without bounds) did not happen: the right click's
+  `popover:` line carried real tray bounds. U2 (synthetic click swallowed) did not happen:
+  CoreGraphics right clicks posted from osascript reached the tray.
+- **Proven:** static checks (no menu code left; one `right-click` handler; one
+  `replayFlight` caller; the settings setters still called from `'settings-set'` and
+  `'popover-set-paused'`). Live runs in the worktree and again on main after the merge:
+  `TEST_FLIGHT=1 OPEN_POPOVER=1`, panel at layer 101 under the plane's layer 1000; a
+  synthetic right click closed the open panel, a second one reopened it with a new
+  `popover:` line; a screenshot showed the #37 panel and no native menu; no errors. The
+  quit-and-relaunch persistence check was left to the owner. Fresh review: 0 Critical,
+  0 Important. The owner accepted at gate 2.
+- **What the plan got wrong:** its "delete, don't hide" grep also matches the plan's own
+  "Never setContextMenu" warning comment, so "no-menu" could not print (comment kept; the
+  grep over code lines is empty); its `docs/usage.md` line range was off by 2.
+- **Deferred:** three doc lines elsewhere still name the old menu (#50); a fresh
+  `npm install` rewrites the lockfile's license field (#49). #44's usage-doc item landed
+  here.
+
+---
+
 ## Popover recent flights: last 5 real flights, click a row to replay — #40 (2026-10-15) — ACCEPTED & CLOSED; commit 4483f77
 
 Fourth slice of #36. #34's single remembered event (`lastFlown`) became a ring of at most 5,
