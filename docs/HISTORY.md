@@ -11,6 +11,38 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## ONBOARDING update path: pull, install, restart — #45 (2026-10-16) — ACCEPTED & CLOSED; commit ce0c222
+
+Docs only. `docs/ONBOARDING.md` gains `## 7. Update`: `git pull`, `npm install`, then restart
+the running instance, with each command alone in a fence and one "you should see" line. Restart
+has two cases: a terminal `npm start` (Ctrl-C, start again) or the login instance (re-run
+`./scripts/install-login-launch.sh`, which does bootout + bootstrap and also covers a login
+instance quit earlier). The section warns that a terminal `npm start` left running makes the
+new login instance lose the lock and stay down (KeepAlive `SuccessfulExit=false`). The check
+that the restart worked is right-click → popover. A draft coworker note (settings window,
+popover, update steps) is on #45 for the owner to send.
+
+- **Proven:** test flight in the worktree; on the owner's Mac the documented path against the
+  login instance (run by the owner — the auto-mode classifier blocked the agent from touching
+  the login job): pid 85687 → 86609, new start 10:41:25 after the 10:41:24 pull, old pid gone,
+  process runs Electron from the main checkout. A second `npm start` while the login instance
+  ran printed `jiraPlane already running — exiting this instance` and exited 0; the login pid
+  did not change. The owner chose to skip the post-merge test flight on main: the merge
+  changed no code (`git diff 46a314d main -- . ':!docs'` empty), and the login instance was
+  already running that code.
+- **Fresh review:** 0 Critical, 3 Important, all fixed: `npm install` dirties
+  `package-lock.json` (#49), and a later pull that touches the lock then refuses, even when the
+  local edit matches upstream (reproduced in a scratch repo), so the section has a
+  `git checkout package-lock.json` recovery step; the dev-restart `npm start` got its own fence;
+  the "new code" check dropped `git log -1` (it shows the commit on disk, not the one running).
+  Deferred minors for #35's rewrite: the Settings launch-at-login toggle as a second login
+  path, "leave and come back" wording for the quit-earlier case, other `npm install` outputs,
+  an installer `Bootstrap failed` line.
+- **What the plan got wrong:** its fence check counted only the three fences it expected, so
+  the inline `npm start` slipped past it; Review Focus #3 (dirty checkout) was not rare —
+  every clone since #8 has the lock drift. #51, filed during the build, duplicated #49 and was
+  closed.
+
 ## Popover contract: right click opens the popover, native menu deleted — #41 (2026-10-15) — ACCEPTED & CLOSED; commit 4dddfa1
 
 Fifth and last slice of #36. The tray now has one surface: right click calls the same
