@@ -609,6 +609,8 @@ async function checkForUpdate() {
     const tag = await updater.check(__dirname);
     const reason = tag && await updater.blocker(__dirname);
     if (holdingFlights()) return; // the click landed while this check ran
+    console.log(`${new Date().toISOString()} update: check: ` +
+      `${!tag ? 'nothing newer' : reason ? `${tag} blocked (${reason})` : `${tag} available`}`);
     setUpdate(tag ? { tag, phase: reason ? 'blocked' : 'available', detail: reason } : null);
   } catch (e) {
     console.log(`${new Date().toISOString()} update: check failed: ${e.message}`);

@@ -7,6 +7,9 @@ const path = require('path');
 const VERSION_TAG = /^v\d+\.\d+\.\d+$/;
 // A hung fetch must not wedge main's one-at-a-time guard for the day. 60 s is a guess.
 const GIT_TIMEOUT_MS = 60_000;
+// A hung install must not hold flights forever; an Electron download on a slow link
+// takes minutes. 15 min is a guess.
+const INSTALL_TIMEOUT_MS = 15 * 60_000;
 
 // launchd's PATH is /usr/bin:/bin:/usr/sbin:/sbin (#24), so resolve absolute paths up front.
 function resolveBin(name) {
@@ -38,7 +41,7 @@ function run(bin, args, repoDir, timeout = GIT_TIMEOUT_MS) {
     execFile(bin, args, { cwd: repoDir, env: childEnv, timeout, maxBuffer: 8 * 1024 * 1024 },
       (err, stdout, stderr) => {
         if (!err) return resolve({ stdout, stderr });
-        const e = new Error(errorLine(stderr) || err.message);
+        const e = new Error(errorLine(stderr) || (err.killed ? `${path.basename(bin)} timed out` : err.message));
         e.code = err.code;
         reject(e);
       });
@@ -59,13 +62,23 @@ async function logged(bin, args, repoDir, timeout) {
   }
 }
 
-// The newest vX.Y.Z tag that HEAD does not already contain, or null.
+function compareVersions(a, b) {
+  const [x, y] = [a, b].map((t) => t.slice(1).split('.').map(Number));
+  return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+}
+
+// The newest vX.Y.Z tag on the remote that HEAD does not already contain, or null.
+// Remote tags only: a tag that was never pushed (or made in a worktree, whose refs
+// the main checkout shares) is not a release.
 async function check(repoDir) {
   if (!GIT_BIN) throw new Error('git not found');
-  await logged(GIT_BIN, ['fetch', '--quiet', '--tags', 'origin'], repoDir);
-  const { stdout } = await run(GIT_BIN, ['tag', '-l', 'v*', '--sort=-v:refname'], repoDir);
-  const tag = stdout.split('\n').find((t) => VERSION_TAG.test(t));
-  if (!tag) return null;
+  const { stdout } = await run(GIT_BIN, ['ls-remote', '--tags', '--refs', 'origin'], repoDir);
+  const tags = stdout.split('\n').map((line) => line.split('\trefs/tags/')[1] || '')
+    .filter((t) => VERSION_TAG.test(t));
+  if (!tags.length) return null;
+  const tag = tags.sort(compareVersions).pop();
+  // Refuses, and so rejects, if a local tag of the same name points elsewhere.
+  await run(GIT_BIN, ['fetch', '--quiet', 'origin', 'tag', tag], repoDir);
   try {
     await run(GIT_BIN, ['merge-base', '--is-ancestor', tag, 'HEAD'], repoDir);
     return null;
@@ -93,12 +106,11 @@ async function blocker(repoDir) {
 
 async function install(repoDir, tag) {
   await logged(GIT_BIN, ['-c', 'advice.detachedHead=false', 'checkout', '--detach', tag], repoDir);
-  // No timeout here or below: an Electron download can take minutes.
-  await logged(NPM_BIN, ['install'], repoDir, 0);
+  await logged(NPM_BIN, ['install'], repoDir, INSTALL_TIMEOUT_MS);
   // Electron 43 has no postinstall: its binary arrives on the first `npm start`.
   // The login job runs that binary directly, so a tag that bumps Electron would
   // leave it nothing to restart. The script is a no-op when the binary is there.
-  await logged(path.join(path.dirname(NPM_BIN), 'node'), ['node_modules/electron/install.js'], repoDir, 0);
+  await logged(path.join(path.dirname(NPM_BIN), 'node'), ['node_modules/electron/install.js'], repoDir, INSTALL_TIMEOUT_MS);
 }
 
 module.exports = { GIT_BIN, NPM_BIN, check, blocker, install };
