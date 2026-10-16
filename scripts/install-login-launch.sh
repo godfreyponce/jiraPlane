@@ -11,9 +11,13 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 ELECTRON="$REPO/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
 PLIST="$HOME/Library/LaunchAgents/com.jiraplane.app.plist"
 
-if [ ! -x "$ELECTRON" ]; then
+# Electron 43 has no postinstall: the binary arrives on the first run (#53).
+if [ ! -f "$REPO/node_modules/electron/install.js" ]; then
   echo "Electron binary not found at $ELECTRON — run 'npm install' first" >&2
   exit 1
+elif [ ! -x "$ELECTRON" ]; then
+  echo "Electron binary not found — fetching it (node node_modules/electron/install.js)" >&2
+  node "$REPO/node_modules/electron/install.js"
 fi
 
 mkdir -p "$(dirname "$PLIST")"
