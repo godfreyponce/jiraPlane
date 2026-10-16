@@ -93,8 +93,12 @@ async function blocker(repoDir) {
 
 async function install(repoDir, tag) {
   await logged(GIT_BIN, ['-c', 'advice.detachedHead=false', 'checkout', '--detach', tag], repoDir);
-  // No timeout: npm may download an Electron build, which can take minutes.
+  // No timeout here or below: an Electron download can take minutes.
   await logged(NPM_BIN, ['install'], repoDir, 0);
+  // Electron 43 has no postinstall: its binary arrives on the first `npm start`.
+  // The login job runs that binary directly, so a tag that bumps Electron would
+  // leave it nothing to restart. The script is a no-op when the binary is there.
+  await logged(path.join(path.dirname(NPM_BIN), 'node'), ['node_modules/electron/install.js'], repoDir, 0);
 }
 
 module.exports = { GIT_BIN, NPM_BIN, check, blocker, install };
