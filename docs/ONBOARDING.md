@@ -95,6 +95,62 @@ with backlog. To re-seed from scratch later, delete `state.json`.
 Starts jiraPlane now, at every login, and again after a crash. Tray **Quit**
 stays quit until next login. Uninstall commands are in the script header.
 
+## 7. Update
+
+New features reach you only when you pull and restart. The app does not check for
+updates, and a pull on its own changes nothing: the running instance keeps the old
+code until it restarts.
+
+```bash
+git pull
+```
+
+You should see a list of changed files, or `Already up to date.`
+
+If it stops with `Your local changes to the following files would be overwritten by
+merge` and names `package-lock.json`, an earlier `npm install` edited that file. Throw
+the edit away, then run `git pull` again.
+
+```bash
+git checkout package-lock.json
+```
+
+You should see `Updated 1 path from the index`.
+
+```bash
+npm install
+```
+
+You should see `up to date` or `added N packages`, and no errors.
+
+Now restart the instance that is running. Which command depends on how you started it.
+
+**Started from a terminal with `npm start`:** press Ctrl-C in that terminal. The plane
+icon leaves the menu bar. Then start it again.
+
+```bash
+npm start
+```
+
+You should see the plane icon come back in the menu bar.
+
+**Started at login (step 6):** re-run the installer. It stops the running login instance
+and starts a fresh one on the code now on disk. It also works if you quit the login
+instance earlier and nothing is running.
+
+```bash
+./scripts/install-login-launch.sh
+```
+
+You should see `Installed com.jiraplane.app — jiraPlane is now running and will start at
+every login.` and the plane icon leave the menu bar and come back.
+
+If a terminal `npm start` is running at the same time, Ctrl-C it first. Otherwise the new
+login instance finds the lock held, exits, and launchd does not start it again.
+
+To check the restart worked, right-click the plane icon. The popover opens. A copy
+still running code from before the popover (#41) shows a plain menu instead.
+
 ## Known quirks
 
 - **One instance at a time.** The login instance holds a lock; a second
