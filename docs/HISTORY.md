@@ -11,6 +11,33 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Login installer fetches the Electron binary — #53 (2026-10-16) — ACCEPTED & CLOSED; commit 79a4993
+
+Electron 43's npm package has no postinstall, so a clone that ran `npm install` and nothing
+else has no `node_modules/electron/dist/`, and `scripts/install-login-launch.sh` stopped on
+`run 'npm install' first`, a hint that cannot fix it. The installer now runs
+`node node_modules/electron/install.js` itself when the binary is missing (the same call
+`updater.js` makes after `npm install`, #48), prints one line saying so, and carries on. Only
+when `node_modules/electron` is absent does the old hint remain, because then it is true.
+`set -e` ends the script before the plist is written if the fetch fails. The binary-present
+path (ONBOARDING step 5 before step 6, the settings toggle) is unchanged.
+
+- **Proven:** every installer run used `HOME=$(mktemp -d)` and `--write-only`. No `dist/`
+  before the change: old hint, exit 1, no plist. After: `Electron binary not found — fetching
+  it (…)`, exit 0, plist written, binary present. Third run: no fetch line, exit 0, plist.
+  The plist's ProgramArguments name the worktree's `dist/…/Electron` and the worktree.
+  `node_modules/electron` moved away: old hint, exit 1. Full check
+  `env -u ELECTRON_RUN_AS_NODE TEAMS_WEBHOOK_URL= TEST_FLIGHT=1 npm start` ran on the fetched
+  binary (`flight: assigned PROJ-142 … durMs=12034`, `update: check: nothing newer`). The real
+  `~/Library/LaunchAgents/com.jiraplane.app.plist` mtime was the same before and after. Fresh
+  review: 0 Critical, 0 Important, 1 Minor. Main-folder check after the merge (same command):
+  `flight: assigned PROJ-142 … durMs=12034`, `update: check: nothing newer`.
+- **What the plan got wrong:** it expected install.js download output; the zip was already in
+  `~/Library/Caches/electron`, so install.js extracted it with no output.
+- **Deferred:** no re-check of the binary after a fetch that exits 0 (only bites with
+  `ELECTRON_OVERRIDE_DIST_PATH` or `ELECTRON_INSTALL_PLATFORM` set); no uncached download was
+  run.
+
 ## Update check in the popover: tag, one click, restart — #48 (2026-10-16) — ACCEPTED & CLOSED; merge f6891cd
 
 At launch and every 24 h (the ticket's guess) the app asks the remote for its `vX.Y.Z` tags.
