@@ -11,6 +11,52 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Update check in the popover: tag, one click, restart — #48 (2026-10-16) — ACCEPTED & CLOSED; merge f6891cd
+
+At launch and every 24 h (the ticket's guess) the app asks the remote for its `vX.Y.Z` tags.
+When the newest one is not already in HEAD, the popover header gets a third line,
+`vX.Y.Z available`, and a small **Update** button under Pause (the owner's pick of three
+variants, `update-2-head`; the losers `update-1-banner` and `update-3-row` are in
+`design-directions/`). The click closes the panel, re-checks the clone, checks out the tag
+(detached), runs `npm install`, fetches the Electron binary (`node_modules/electron/install.js`;
+Electron 43 has no postinstall and the login job execs the binary directly), and restarts once
+no plane is in the air. Flights are held from the click to the restart. The login job restarts
+by `app.exit(1)` (KeepAlive brings it back as `com.jiraplane.app`); a dev run by
+`app.relaunch()`. A clone with modified tracked files or on a branch other than `main` is
+refused with the reason (`Can't update: … See ONBOARDING § 7.`); a failed install keeps the app
+running and shows `Update failed: <first error line>`. No remote tags or no network: no line,
+one `update: check failed:` log line. `updater.js` owns the git/npm work and resolves absolute
+`git`/`npm` paths (launchd PATH, #24). ONBOARDING § 7 now leads with the button; its manual path
+checks out the newest tag instead of pulling. First tag: `v0.1.0` on this merge.
+
+- **Proven:** `updater.js` under plain node on a scratch clone: newest of v9.9.0/v9.10.0 is
+  v9.10.0; `v1.2`, `release-1`, `v9.11.0-rc1` ignored; a local-only `v9.20.0` not offered; a
+  tag-less remote → null; unreachable remote rejects with git's `fatal:` line; dirty file /
+  `feature-x` branch / `main` → refused / refused / allowed; launchd PATH resolves
+  `/usr/bin/git /usr/local/bin/npm`; install with the Electron binary deleted puts it back; a
+  1 ms install timeout lands in `npm timed out`. Live on the scratch clone (dev restart):
+  `TEST_FLIGHT=1 UPDATE_NOW=1` updated during the flight, `restarting as dev run (relaunch)`
+  logged ~1 s after the 12 s flight ended, new pid = the marker commit's pid file, HEAD at
+  `v9.10.0`. Broken-dependency tag: `npm install failed: npm error code E404`, same pid kept
+  running, panel read `Update failed: npm error code E404. See ONBOARDING § 7.`, HEAD at the
+  tag, tracked tree clean. Worktree full check: `update: check: nothing newer`, panel as
+  before. Popover: with no update, heights 293/197/293/212 and every element's geometry and
+  colour identical to main; `#update` keeps its node across same-content pushes. Fresh review:
+  0 Critical, 2 Important (local-only tags offered; unbounded install), both fixed, plus the
+  three-log-lines finding re-graded and fixed. Login-job restart: left to the owner on the `/tmp/jp48` scratch copy; no result reported at gate 2 (the owner accepted with "accepted, land it"). Main-folder check after the merge: `update: check: nothing newer`, flight and popover lines as in the worktree.
+- **What the plan got wrong:** candidates from local `git tag -l` would offer tags never pushed
+  (and the owner's worktrees share refs with the main checkout), now `git ls-remote`; the
+  "last stderr line" is advice for git and a log path for npm, now the first error line;
+  `npm install` alone leaves no Electron binary on Electron 43; the plan's restart branch came
+  before the quit check in `flyNext` (a Quit during `restarting` would have relaunched); the
+  `screencapture` of `Restarting after this flight…` during a flight did not catch the panel.
+- **Deferred:** ONBOARDING § 7's manual tag pick does not skip prerelease tags; Electron
+  installer errors would show a stack line in the panel; Quit during `installing` can leave
+  npm half done; the `failed` line lasts one process; a transient `launchctl print` failure
+  would relaunch outside launchd; Settings first opened mid-install loads new HTML under old
+  main.js; a daily check and a click can collide on git's index lock. Filed: tray icon → paper
+  plane (#52); login installer's "run npm install first" hint (#53).
+
 ## Docs stop naming the deleted tray menu — #50 (2026-10-16) — ACCEPTED & CLOSED; commit a285e11
 
 Three prose lines deferred from the #41 final review. README's Physics section said the second
