@@ -11,6 +11,23 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Docs stop naming the deleted tray menu — #50 (2026-10-16) — ACCEPTED & CLOSED; commit a285e11
+
+Three prose lines deferred from the #41 final review. README's Physics section said the second
+banner style was "in the tray"; it now says "picked in Settings…". usage.md's `settings.json`
+line said "currently the banner style" while the tray section two screens up said Fly on
+persists too; it now names Banner style and Fly on. ONBOARDING's gotcha said "**Pause polling**
+in the tray"; the panel's switch is labelled Pause, so it now names the panel switch first and
+*Pause polling* in Settings… second. No code.
+
+- **Proven:** `git diff --stat` → `3 files changed`, one hunk each; the three planning greps
+  return zero hits after the edit. `env -u ELECTRON_RUN_AS_NODE TEAMS_WEBHOOK_URL= TEST_FLIGHT=1
+  npm start` from the worktree printed `jiraPlane already running — exiting this instance` (the
+  owner's login instance held the single-instance lock, #49 precedent); no flight flew from the
+  worktree.
+
+No `Build P/P pages` figure: this repo has no build check (AGENTS.md `# Verification scope`).
+
 ## package-lock.json license matches package.json — #49 (2026-10-16) — ACCEPTED & CLOSED; commit e0eb995
 
 One regenerated line. `package-lock.json`'s root entry said `"license": "UNLICENSED"` from the
