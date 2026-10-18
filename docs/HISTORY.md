@@ -11,6 +11,32 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Tray icon: paper plane from the popover stage — #52 (2026-10-17) — ACCEPTED & CLOSED; commit bda3a64
+
+The popover's preview stage drew a paper plane in its fake menu bar while the real tray
+showed a right-pointing arrowhead (`f916268`). The three stage paths now live in
+`assets/iconTemplate.svg` (black fills, opacities 1 / .72 / .5) and are rendered with
+`rsvg-convert -w 16 -h 16` and `-w 32 -h 32` into the two template PNGs `main.js` already
+loads. No code change: Electron marks `*Template.png` as a template image and finds the `@2x`
+file by name, so macOS tints the plane for the menu bar.
+
+- **Proven:** both PNGs hold only `(0,0,0,a)` pixels (16 px: 165 at alpha 0, 14 at 255, 14
+  at 184); a fresh review re-rendered both from the SVG and got identical pixels. Montage
+  (old / toned / flat, 16 and 32 px, black on white and white on `#262626`): toned shows the
+  wing fold at 16 px, flat merges into one arrowhead. Full check
+  `env -u ELECTRON_RUN_AS_NODE TEAMS_WEBHOOK_URL= TEST_FLIGHT=1 OPEN_POPOVER=1 npm start` in
+  the worktree: test flight crossed (PROJ-142 tag captured mid-flight), the plane showed in
+  the menu bar on the Retina display (`@2x`) and on the 1x external display (16 px file,
+  dimmed as the inactive bar). Synthetic left and right clicks each logged
+  `popover: tray=990,0 32x33` and the panel was on screen 0.4 s later. Dark mode flipped and
+  restored (`true` → `false` → `true`). Fresh review: 0 Critical, 0 Important.
+- **What the plan got wrong:** flipping Appearance did not change the menu bar: on this Mac
+  the bar's glyph colour follows the wallpaper, so both captures showed a white plane and the
+  dark-glyph-on-light-bar case was not seen by the build. `npm install` left out the Electron
+  binary (the #53 case); `node node_modules/electron/install.js` fetched it.
+- **Deferred:** the .5 keel is under one pixel wide at 16 px and nearly vanishes on a 1x
+  display (stage geometry kept on purpose); flat fallback kept in `design-directions/icon-52/`.
+
 ## Login installer fetches the Electron binary — #53 (2026-10-16) — ACCEPTED & CLOSED; commit 79a4993
 
 Electron 43's npm package has no postinstall, so a clone that ran `npm install` and nothing
