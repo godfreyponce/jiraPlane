@@ -11,6 +11,31 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Tray panel opens on the clicked display — #47 (2026-10-18) — ACCEPTED & CLOSED; no code (fixed by #54)
+
+The ticket's cause was wrong. The tray click bounds were never wrong in two builds: a click on
+the icon of the display that is not active is used up by macOS to make that display active, and
+the second click reports that display's own bounds. The panel landed on the wrong display
+because AeroSpace adopted it and moved it to its workspace's monitor within 2 s (filed as #54
+from this build's first run). With #54 landed, the plan's red check passes with no change, so
+the planned cursor-based placement was not built.
+
+- **Proven:** first run on `2be9282` (before #54), two displays (built-in 1512x982@0,0,
+  external 1920x1080@1512,-38): every `popover:` line named the clicked display, but after a
+  built-in click the window probe found the panel at `2769,-2` on the external while the log
+  said `at=990,38`; `aerospace list-windows --all` listed it on the external's workspace 8.
+  Second run on `a891a3c` (#54 in): both orders (external, built-in, external and the reverse)
+  plus a right click, 8 `popover:` lines, each naming the clicked display, each probe 2 s later
+  at the logged `at=`; `OPEN_POPOVER=1` placed at `2909,-3` on the external. The owner flew it
+  with real clicks: looks good, nothing broken.
+- **What the plan got wrong:** the cause. The plan took the bounds from Electron's source
+  (status item window frame) and inferred the rest from the owner's log; U3 (green before the
+  fix) and U1 (AeroSpace moves the panel) were both hit on the first run, and the build
+  stopped before editing.
+- **Deferred:** none new. The "first click on the other display does nothing" behaviour is
+  #54's finding; one display was not run (two attached); the flash was not seen (a synthetic
+  run cannot see motion).
+
 ## Popover panel stays where it opens under AeroSpace — #54 (2026-10-18) — ACCEPTED & CLOSED; commit cd9c376
 
 AeroSpace adopted the tray panel as a managed window and moved it to its workspace's monitor
