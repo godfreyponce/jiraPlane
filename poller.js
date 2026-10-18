@@ -179,15 +179,16 @@ async function collectRelevantComments() {
     const summary = (issue.fields && issue.fields.summary) || '(no summary)';
     const onAssignedIssue = assigned.has(key);
     for (const c of await recentComments(key)) {
-      if (c.created && Date.parse(c.created) < cutoff) {
-        continue; // pre-existing history (a newly-assigned ticket's backlog) is not news
-      }
       const author = c.author || {};
       if (author.name === config.username || author.key === config.userKey) {
         continue; // your own comments are noise, not news
       }
       const body = c.body || '';
       const mentions = mentionsMe(body);
+      // Pre-existing history is not news unless an edit inside the window left a mention in it (#13, #43).
+      const createdInWindow = !c.created || Date.parse(c.created) >= cutoff;
+      const editedInWindow = !!c.updated && Date.parse(c.updated) >= cutoff;
+      if (!createdInWindow && !(editedInWindow && mentions)) continue;
       if (!onAssignedIssue && !mentions) continue;
       results.push({
         issueKey: key,
