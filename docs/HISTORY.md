@@ -11,6 +11,33 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Popover panel stays where it opens under AeroSpace — #54 (2026-10-18) — ACCEPTED & CLOSED; commit cd9c376
+
+AeroSpace adopted the tray panel as a managed window and moved it to its workspace's monitor
+within 2 s of a click on the built-in display's icon. The panel now sets `closable: false`.
+With no AX close button, AeroSpace 0.21's window filter classifies the accessory app's panel
+as a popup and never adopts or moves it. Electron's `Close()` refuses a non-closable window
+and cancels `app.quit()`, so `before-quit` calls `popoverWin.setClosable(true)` first.
+No AeroSpace release on the panel (#38 stays intact).
+
+- **Proven:** in the worktree with two displays (built-in 1512x982@0,0, external
+  1920x1080@1512,-38) and AeroSpace 0.21.3: each open logged `at=947,38` (built-in) or
+  `at=2865,-3` (external), and the window probe found the `layer=101` panel at that point at
+  once and 2 s later; `aerospace list-windows --all` listed no panel. Test flight rows fired a
+  flight from both displays. The panel stayed open through 11 s of mouse moves and shift
+  presses; a click outside closed it. Quit row exited in about 500 ms and SIGTERM in about
+  250 ms with the panel open; with the `setClosable` line removed, the app was still running
+  3 s after Quit. With AeroSpace quit, the panel opened at `at=`, the row flew, Quit exited.
+  Full check `env -u ELECTRON_RUN_AS_NODE TEAMS_WEBHOOK_URL= TEST_FLIGHT=1 npm start`: flight
+  on both display rows on launch, a click opened the panel, Quit exited. Fresh review: 0
+  Critical, 0 Important.
+- **What the plan got wrong:** the plan's cause for the first build's row-click hide (AeroSpace
+  switching focus on a mouse-up inside the panel) was not confirmed. A click on the icon of the
+  display that is not active is used up by macOS to make that display active, with or without
+  AeroSpace, so the panel never opened with focus on the other display; the second click opens
+  it. The owner picked the smaller build: no `alignTilingWMFocus`, no `aerospace=` log field.
+  The hide is tracked in #56; the overlay `closable: false` question in #55.
+
 ## Tray icon: paper plane from the popover stage — #52 (2026-10-17) — ACCEPTED & CLOSED; commit bda3a64
 
 The popover's preview stage drew a paper plane in its fake menu bar while the real tray
