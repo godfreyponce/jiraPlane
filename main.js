@@ -83,7 +83,11 @@ let rowEndAt = [];    // projected teardown wall-time per row, index-aligned
 // Teams DM (if any) already went out at dispatch time and state advanced
 // before output, so only the visual is dropped.
 let quitting = false;
-app.on('before-quit', () => { quitting = true; });
+app.on('before-quit', () => {
+  quitting = true;
+  // Electron's Close() refuses a non-closable window and cancels the quit (#54).
+  if (popoverWin && !popoverWin.isDestroyed()) popoverWin.setClosable(true);
+});
 
 function destroyActiveFlight() {
   clearTimeout(startTimer);
@@ -513,7 +517,12 @@ function createPopover() {
     frame: false,
     vibrancy: 'menu',
     visualEffectState: 'active', // keep the blur while the app is inactive, like a menu
-    resizable: false, movable: false, minimizable: false, maximizable: false,
+    // No AX close button + an accessory app = a popup to AeroSpace 0.21's
+    // window filter (isWindowHeuristic, Sources/AppBundle/model/
+    // AxUiElementWindowType.swift), so it never adopts the panel and never
+    // moves it to its workspace's monitor (#54). The #38 release is not the
+    // answer: it made the panel blur and hide.
+    resizable: false, movable: false, minimizable: false, maximizable: false, closable: false,
     fullscreenable: false,
     skipTaskbar: true,
     acceptFirstMouse: true, // the first click picks a row instead of focusing (#9)
