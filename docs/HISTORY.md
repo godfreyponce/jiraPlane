@@ -11,6 +11,40 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## A mention added by editing an older comment flies — #43 (2026-10-18) — ACCEPTED & CLOSED; commit d816462
+
+`collectRelevantComments()` dropped every comment created before the lookback window (#13's
+backlog guard), so a coworker's old comment, edited hours later to add a mention, never flew.
+A comment now passes the window check when it was created inside the window, or when it was
+edited inside the window (`updated >= cutoff`) and its current body mentions you. An edit to an
+old comment that leaves no mention still flies nothing, even on a ticket assigned to you:
+Jira DC keeps no edit history, so a typo fix looks the same as new text, and letting edits fly
+as `comment` would leak #13's guard on every hand-off. One hunk in `poller.js`; the JQL, the
+flood valve, `cycle()`, and the state shape are unchanged.
+
+- **Proven:** scratch harness `/tmp/jp43/harness.js` (stubbed `fetch`, `statePath` in `/tmp`,
+  not committed) ran `cycle()` on seven scenarios. Before the change: A (old comment, edited
+  in window, mention) FAIL, got `[]`; B-G PASS. After: A-G all PASS — A flies `mention X-1 101`,
+  B (same comment already in `seen`) flies nothing, C (newly assigned ticket, old unedited
+  mention in its backlog) flies only `assigned Y-1`, D (old comment, edited, no mention) and E
+  (old mention, no `updated`) fly nothing, F (no timestamps) and G (fresh) fly `comment`. Full
+  check from the worktree, `.env` loaded from the main folder into the process env:
+  `env -u ELECTRON_RUN_AS_NODE TEAMS_WEBHOOK_URL= TEST_FLIGHT=1 npm start` flew
+  `assigned PROJ-142` across both displays on launch, seeded 0 comments and 42 assignments,
+  and wrote state at 21:47:48, 21:48:48 and 21:49:48 UTC with no `poll cycle failed`. A second
+  run with `LOOKBACK_MINUTES=2` wrote state at 21:50:28, 21:51:28 and 21:52:28 UTC, no error.
+  Fresh review: 0 Critical, 0 Important.
+- **Known limits (accepted in the plan):** a mention that flew more than `PRUNE_DAYS` (30) ago
+  flies again if it is edited, because `pruneSeen()` has dropped its ID. An edited old comment
+  outside the 20 newest (`COMMENTS_PER_ISSUE`, ordered by `created`) is not fetched.
+- **What the plan got wrong:** Step 6 expected poll cycles "in the log", but a cycle with no
+  events logs nothing; the evidence is `state.json`'s write time, once a minute. The worktree
+  has no `.env`, so the run took the main folder's values through the process env.
+- **Deferred minors:** a comment whose `created` cannot be parsed is now dropped (before, it
+  was kept); Jira DC sends a parseable timestamp, so this does not happen today.
+  `!!c.updated &&` is redundant (`Date.parse(undefined)` is NaN), so scenario E passes with or
+  without it.
+
 ## Tray panel opens on the clicked display — #47 (2026-10-18) — ACCEPTED & CLOSED; no code (fixed by #54)
 
 The ticket's cause was wrong. The tray click bounds were never wrong in two builds: a click on
