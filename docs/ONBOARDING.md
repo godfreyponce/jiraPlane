@@ -97,6 +97,20 @@ with backlog. To re-seed from scratch later, delete `state.json`.
 Starts jiraPlane now, at every login, and again after a crash. Tray **Quit**
 stays quit until next login. Uninstall commands are in the script header.
 
+The login instance writes its console output to `~/Library/Logs/jiraplane.log`.
+If you installed before this log existed, run the script again to get it. To watch it:
+
+```bash
+tail -f ~/Library/Logs/jiraplane.log
+```
+
+The file is never rotated, and it stays small. A poll cycle with nothing new writes
+nothing. Each flight writes about 200 bytes, the update check about 50 bytes a day,
+and each panel open about 100 bytes. At about 12 events a month and a few panel
+opens a day, that is under 1 KB a day. If Jira is unreachable or your token has
+expired, the app writes one failure line of up to 60 bytes each minute, about
+85 KB a day.
+
 ## 7. Update
 
 The app checks for a new version at launch and once a day. When one is tagged, the

@@ -2,9 +2,11 @@
 # Installs a launchd LaunchAgent so jiraPlane starts at login and restarts
 # after a crash — the always-on guarantee that lets the JiraAlerts timer
 # retire (#7). Tray "Quit" (clean exit) stays quit. Re-run after moving the
-# repo. Uninstall:
+# repo. The login instance's console output goes to ~/Library/Logs/jiraplane.log.
+# Uninstall:
 #   launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.jiraplane.app.plist
 #   rm ~/Library/LaunchAgents/com.jiraplane.app.plist
+#   rm ~/Library/Logs/jiraplane.log
 set -e
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,6 +37,8 @@ cat > "$PLIST" <<EOF
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>StandardOutPath</key><string>$HOME/Library/Logs/jiraplane.log</string>
+  <key>StandardErrorPath</key><string>$HOME/Library/Logs/jiraplane.log</string>
 </dict>
 </plist>
 EOF
