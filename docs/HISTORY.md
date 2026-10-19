@@ -11,6 +11,41 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Popover footer version line, update swoosh, npm version releases — #58 (2026-10-19) — ACCEPTED & CLOSED; commit 5d0f804
+
+The popover's update line left the header. It is now the panel's last row, under Quit after a
+separator (pick `version-3-footer` of 3): the version on the left, `checked 42s ago` on the
+right, muted, no branch name and no ` · `. On the tag and past it (`ahead`) the row reads the
+plain tag; `Up to date` is gone. `Couldn't check for updates` keeps its time on the right (none
+when never checked); `vX.Y.Z available` + Update button; refusals in red, 2-line clamp. `ref`
+left the popover contract (`updater.check()` still returns it for the log line). Added by the
+owner mid-build: while an update installs, the tray plane rides the separator above the row and
+draws it as a contrail (pick `swoosh-3-contrail` of 3); when the install goes through, the plane
+flies to the line's end, the line fills, glows once and stays lit, then the plane drops into
+the row and parks (picks `swoosh-finish-2-lit` then `-3-park`, combined). For that, Update no
+longer hides the popover, and `runUpdate` waits `FINISH_MS` (350 + 600 + 500 + 500 ms parked)
+after `restarting` before the restart. Empty panel 232 px (was 214); `POPOVER_SIZE` follows.
+New `.npmrc` (`message=release v%s`), so `npm version patch` commits `release vX.Y.Z`.
+
+- **Proven:** hidden-window Electron runs of standalone `popover.html`: every preset's text,
+  colour, height (empty 232, config error 247, 5 rows 328, blocked/failed 344), nothing cut;
+  Update button and `#update` row the same node across a render, only the time changes; the
+  finish never flies backward when the install ends late in a crossing (304 → 304, was 304 →
+  288). Scratch repo: `npm version patch` → `v0.0.2`, commit `release v0.0.2`, annotated tag.
+  Live from the worktree at `v0.1.5`: `update: check: v0.1.5 current`, footer `v0.1.5` /
+  `checked just now`; `TEST_FLIGHT=1` flew `assigned PROJ-142`. About reads `package.json`
+  `0.1.5` (read, not captured). The swoosh and finish were seen only in standalone demos, not in
+  a live update (no newer tag to update to). Fresh review: 0 Critical, 0 Important; three Minors
+  re-graded Important and fixed (stale 214 comment, no parked dwell before restart, plane could
+  fly back up to 16 px).
+- **What the plan got wrong:** Step 1 said `npm install` (used `npm ci`); the swoosh, the finish,
+  and the `main.js` flow change (no hide on Update, `FINISH_MS` wait) were not in the plan —
+  the owner asked for them at the variant picks.
+- **Deferred minors:** under reduced motion the static swoosh vanishes at `restarting` instead
+  of showing a still lit/parked state; the finish timing lives in two places (`FINISH_MS` and
+  `finishSwoosh`), joined only by comments; a flight ending (or Test flight) during the
+  `FINISH_MS` wait restarts at once and cuts the finish short.
+
 ## Overlays as AeroSpace popups: `closable: false` alone is not enough — #55 (2026-10-19) — ACCEPTED & CLOSED; no code (spike)
 
 The question was whether `closable: false` on the flight overlays makes AeroSpace treat them
