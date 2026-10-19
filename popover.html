@@ -1,6 +1,7 @@
-<!-- popover (#38): the #37 pick, popover-1-menu. 320 × 293 at 5 rows, 197 empty, 212 config
-     error (measured). main.js POPOVER_SIZE is the empty size; render() sends the real height (#39).
-     Update line (#48, pick update-2-head) at 5 rows: 313 available, 310 installing/restarting,
+<!-- popover (#38): the #37 pick, popover-1-menu. The update line is always there since #57:
+     320 × 310 at 5 rows, 214 empty, 229 config error (measured). main.js POPOVER_SIZE is the
+     empty size; render() sends the real height (#39). Update line (#48, pick update-2-head) at
+     5 rows: 310 checking/current/ahead/check-failed/installing/restarting, 313 available,
      325 blocked/failed (measured). -->
 <!DOCTYPE html>
 <html lang="en">
@@ -122,6 +123,7 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   #update[data-tone="busy"] .update-line { color: var(--muted); }
+  #update[data-tone="info"] .update-line { grid-column: 1 / -1; color: var(--muted); }
   #update[data-tone="error"] .update-line {
     grid-column: 1 / -1; color: var(--error); white-space: normal; overflow-wrap: anywhere;
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
@@ -260,6 +262,10 @@
   <button data-preset="empty">Empty</button>
   <button data-preset="paused">Paused</button>
   <button data-preset="error">Config error</button>
+  <button data-preset="checking">Checking</button>
+  <button data-preset="ahead">Ahead</button>
+  <button data-preset="checkFailed">Check failed</button>
+  <button data-preset="neverChecked">Never checked</button>
   <button data-preset="update">Update</button>
   <button data-preset="installing">Installing</button>
   <button data-preset="restarting">Restarting</button>
@@ -293,11 +299,18 @@ function span(className, text) {
   return el;
 }
 
-// Update line (#48). One element #update, rebuilt only when its content changes,
-// so the 1 s push (#39) never swaps the button out from under a click.
+// Update line (#48), always present since #57. One element #update, rebuilt only when
+// its content changes, so the 1 s push (#39) never swaps the button out from under a
+// click; between changes only the line's text (its checked time) is rewritten.
 let shownUpdateKey = '';
 function updateLine(update) {
   switch (update.phase) {
+    case 'checking':   return 'Checking for updates…';
+    case 'current':    return `${update.tag} · Up to date · checked ${ago(update.checkedAt)}`;
+    case 'ahead':      return `${update.ref} · ahead of ${update.tag} · checked ${ago(update.checkedAt)}`;
+    case 'check-failed':
+      return update.checkedAt === null ? "Couldn't check for updates"
+        : `Couldn't check for updates · checked ${ago(update.checkedAt)}`;
     case 'available':  return `${update.tag} available`;
     case 'installing': return `Updating to ${update.tag}…`;
     case 'restarting': return 'Restarting after this flight…';
@@ -306,15 +319,18 @@ function updateLine(update) {
   }
 }
 function updateTone(update) {
-  return update.phase === 'available' ? 'available'
+  return ['checking', 'current', 'ahead', 'check-failed'].includes(update.phase) ? 'info'
+    : update.phase === 'available' ? 'available'
     : update.phase === 'blocked' || update.phase === 'failed' ? 'error' : 'busy';
 }
 function renderUpdate(update) {
-  const key = update ? `${update.phase}|${update.tag}|${update.detail}` : '';
-  if (key === shownUpdateKey) return;
-  shownUpdateKey = key;
-  $('update')?.remove();
-  if (update) placeUpdate(buildUpdate(update));
+  const key = `${update.phase}|${update.tag}|${update.ref}|${update.detail}`;
+  if (key !== shownUpdateKey) {
+    shownUpdateKey = key;
+    $('update')?.remove();
+    placeUpdate(buildUpdate(update));
+  }
+  $('update').querySelector('.update-line').textContent = updateLine(update);
 }
 
 function buildUpdate(update) {
@@ -385,18 +401,25 @@ function standaloneApi() {
     { issueKey: 'WEB-310', snippet: 'Swap the footer links for <FooterNav compact />', at: now - 26 * 3600e3 },
     { issueKey: 'PROJ-139', snippet: 'Bump timeout for the batch job', at: now - 4 * 86400e3 },
   ];
-  const LIVE = { lastPollAt: now - 12e3, pollingPaused: false, configError: null, flights: FLIGHTS, update: null };
+  const checked = now - 3 * 3600e3;
+  const NEWER = { tag: 'v0.2.0', ref: '', checkedAt: checked };
+  const LIVE = { lastPollAt: now - 12e3, pollingPaused: false, configError: null, flights: FLIGHTS,
+                 update: { phase: 'current', tag: 'v0.1.2', ref: '', detail: '', checkedAt: checked } };
   const PRESETS = {
     flights: LIVE,
     empty: { ...LIVE, flights: [] },
     paused: { ...LIVE, pollingPaused: true },
-    error: { lastPollAt: null, pollingPaused: false, flights: [], update: null,
+    error: { lastPollAt: null, pollingPaused: false, flights: [], update: LIVE.update,
              configError: 'Polling disabled: Jira URL or token missing in .env' },
-    update:     { ...LIVE, update: { tag: 'v0.2.0', phase: 'available',  detail: '' } },
-    installing: { ...LIVE, update: { tag: 'v0.2.0', phase: 'installing', detail: '' } },
-    restarting: { ...LIVE, update: { tag: 'v0.2.0', phase: 'restarting', detail: '' } },
-    blocked:    { ...LIVE, update: { tag: 'v0.2.0', phase: 'blocked',    detail: 'local edits in main.js, popover.html' } },
-    failed:     { ...LIVE, update: { tag: 'v0.2.0', phase: 'failed',     detail: 'npm ERR! code E404' } },
+    checking:   { ...LIVE, update: { phase: 'checking', tag: '', ref: '', detail: '', checkedAt: null } },
+    ahead:      { ...LIVE, update: { phase: 'ahead', tag: 'v0.1.2', ref: 'main', detail: '', checkedAt: checked } },
+    checkFailed: { ...LIVE, update: { phase: 'check-failed', tag: '', ref: '', detail: '', checkedAt: checked } },
+    neverChecked: { ...LIVE, update: { phase: 'check-failed', tag: '', ref: '', detail: '', checkedAt: null } },
+    update:     { ...LIVE, update: { ...NEWER, phase: 'available',  detail: '' } },
+    installing: { ...LIVE, update: { ...NEWER, phase: 'installing', detail: '' } },
+    restarting: { ...LIVE, update: { ...NEWER, phase: 'restarting', detail: '' } },
+    blocked:    { ...LIVE, update: { ...NEWER, phase: 'blocked',    detail: 'local edits in main.js, popover.html' } },
+    failed:     { ...LIVE, update: { ...NEWER, phase: 'failed',     detail: 'npm ERR! code E404' } },
   };
   let state = LIVE;
   let onState = () => {};

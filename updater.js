@@ -67,7 +67,9 @@ function compareVersions(a, b) {
   return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
 }
 
-// The newest vX.Y.Z tag on the remote that HEAD does not already contain, or null.
+// Where HEAD stands against the newest vX.Y.Z tag on the remote (#57):
+// { tag, relation: 'on' | 'ahead' | 'behind', ref }. ref names HEAD (branch, or
+// short commit when detached) for 'ahead' only. Rejects when no such tag exists.
 // Remote tags only: a tag that was never pushed (or made in a worktree, whose refs
 // the main checkout shares) is not a release.
 async function check(repoDir) {
@@ -75,17 +77,28 @@ async function check(repoDir) {
   const { stdout } = await run(GIT_BIN, ['ls-remote', '--tags', '--refs', 'origin'], repoDir);
   const tags = stdout.split('\n').map((line) => line.split('\trefs/tags/')[1] || '')
     .filter((t) => VERSION_TAG.test(t));
-  if (!tags.length) return null;
+  if (!tags.length) throw new Error('no vX.Y.Z tags on origin');
   const tag = tags.sort(compareVersions).pop();
   // Refuses, and so rejects, if a local tag of the same name points elsewhere.
   await run(GIT_BIN, ['fetch', '--quiet', 'origin', 'tag', tag], repoDir);
+  // ^{commit}: an annotated tag names a tag object, not the commit HEAD can equal.
+  const [head, tagCommit] = (await run(GIT_BIN, ['rev-parse', 'HEAD', `${tag}^{commit}`], repoDir))
+    .stdout.trim().split('\n');
+  if (head === tagCommit) return { tag, relation: 'on', ref: '' };
   try {
     await run(GIT_BIN, ['merge-base', '--is-ancestor', tag, 'HEAD'], repoDir);
-    return null;
   } catch (e) {
-    if (e.code === 1) return tag;
+    if (e.code === 1) return { tag, relation: 'behind', ref: '' };
     throw e;
   }
+  let ref;
+  try {
+    ref = (await run(GIT_BIN, ['symbolic-ref', '--short', '-q', 'HEAD'], repoDir)).stdout.trim();
+  } catch (e) {
+    if (e.code !== 1) throw e; // exit 1 = detached HEAD
+    ref = (await run(GIT_BIN, ['rev-parse', '--short', 'HEAD'], repoDir)).stdout.trim();
+  }
+  return { tag, relation: 'ahead', ref };
 }
 
 // '' when the clone may update; otherwise why not. Local edits are never touched.
