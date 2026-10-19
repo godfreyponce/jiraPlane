@@ -11,6 +11,44 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Popover always shows update status — #57 (2026-10-19) — ACCEPTED & CLOSED; commit 8708930
+
+The #48 header line is always there now. `updater.check()` returns where HEAD stands against
+the newest remote `vX.Y.Z` tag (`on` / `ahead` / `behind`, with the branch name or short commit
+for `ahead`) and rejects when origin has no such tag. `main.js` keeps the `update` field always
+set: it starts at `checking`, a good check stamps `checkedAt`, a failed check becomes
+`check-failed` (it replaces only `checking`, `current`, `ahead`, and `check-failed`, so a known
+newer tag, an install under way, or a failed update keeps its own line). New lines, muted grey,
+full header width: `Checking for updates…`, `vX.Y.Z · Up to date · checked 3h ago`,
+`main · ahead of vX.Y.Z · checked 3h ago`, `Couldn't check for updates[ · checked 3h ago]`.
+The blocker runs only for `behind`, so local edits on an up-to-date clone show no warning. The
+#48 flow is unchanged; `runUpdate` carries the new fields along. `popover.html` rebuilds
+`#update` only when phase, tag, ref, or detail changes and rewrites the line's text on every 1 s
+push, so the time moves and the Update button stays the same node. The empty-state panel is now
+214 px (was 197); `POPOVER_SIZE.height` follows. No design variants (owner decision Q4).
+
+- **Proven:** `updater.check` under plain node on a scratch clone (annotated `v9.9.0`):
+  `on`, `ahead` `side`, `ahead` short commit when detached, `behind` `v9.10.0`, unreachable
+  remote → git's `fatal:` line, tag-less remote → `no vX.Y.Z tags on origin`. Standalone
+  `popover.html` in headless Chrome: every preset's line, tone, and height (empty 214, 5 rows
+  310, available 313, blocked/failed 325 as before); the Update button is the same node across a
+  render; the line's time changes in place. Live on the scratch: `v9.9.0 · Up to date · checked
+  just now` → `checked 18s ago` with a local edit and no warning; `main · ahead of v9.9.0`;
+  `UPDATE_NOW=1` ran the #48 chain to `restarting as dev run (relaunch)` and the relaunched panel
+  read `v9.10.0 · Up to date · checked just now`; `Can't update: local edits in popover.html. See
+  ONBOARDING § 7.` in red before any click; `Checking for updates…` while git hung to
+  `check failed: git timed out`; grey `Couldn't check for updates` on a failed launch check.
+  Full check from the worktree: `TEST_FLIGHT=1` flew `assigned PROJ-142`, panel read
+  `issue-57 · ahead of v0.1.2 · checked just now`. Fresh review: 0 Critical, 0 Important; one
+  Minor re-graded Important and fixed (a failed check could replace `Update failed`).
+- **What the plan got wrong:** Step 5(c) names an "Up to date" preset the plan never adds (the
+  "5 flights" preset shows it); run E's 66 s capture missed the panel (it hides on blur), so a
+  fast-failing remote showed the grey line instead; a second "197 px" comment in `main.js`.
+- **Deferred minors:** dead null guards (`update?.`, `Boolean(update)`) in `main.js`; a long
+  branch name ellipsizes the whole line, so the tag and time drop off before the branch is cut
+  (plan decision 4 said the branch is cut); `renderUpdate` writes the line text twice on a
+  rebuild.
+
 ## Login LaunchAgent keeps its console output — #19 (2026-10-19) — ACCEPTED & CLOSED; commit 0a5880e
 
 The `com.jiraplane.app` plist set no `StandardOutPath` or `StandardErrorPath`, so the
