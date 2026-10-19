@@ -488,7 +488,7 @@ ipcMain.on('settings-open-repo', () => shell.openExternal(REPO_URL));
 // Tray popover (#38): the #37 pick (popover-1-menu) as a frameless vibrancy
 // panel under the tray icon. Created hidden at launch so a click opens it at
 // once; hidden, never destroyed, on dismiss.
-const POPOVER_SIZE = { width: 320, height: 214 }; // the empty state with the #57 update line; the page fits the height (#39)
+const POPOVER_SIZE = { width: 320, height: 232 }; // the empty state with the #58 footer update row; the page fits the height (#39)
 const POPOVER_GAP = 5; // px under the icon, as on the #37 stage (24 px menu bar, panel at 29)
 let popoverWin = null;
 let popoverClock = null; // the 1 s re-send while the panel is open (#39)
@@ -587,19 +587,22 @@ ipcMain.on('popover-set-paused', (e, paused) => {
   if (typeof paused === 'boolean') setPollingPaused(paused);
 });
 // The page sends its panel height after each render (#39). A config error
-// wraps the status to two lines, taller than the 214 px empty state. setSize
+// wraps the status to two lines, taller than the 232 px empty state. setSize
 // keeps the top edge, so the panel grows downward from the menu bar.
 ipcMain.on('popover-fit', (e, height) => {
   const [width, current] = popoverWin.getSize();
   if (Number.isInteger(height) && height !== current) popoverWin.setSize(width, height);
 });
-ipcMain.on('popover-update', () => { popoverWin.hide(); runUpdate(); });
+ipcMain.on('popover-update', () => runUpdate()); // the panel stays open to show the swoosh (#58)
 
 // Update check (#48): a new vX.Y.Z tag shows in the popover; one click checks
 // it out, runs npm install, and restarts once no plane is in the air.
 const UPDATE_CHECK_MS = 24 * 60 * 60 * 1000; // "once a day" is #48's guess
-// The popover contract field (#48), always set since #57: the header always shows a status.
-let update = { phase: 'checking', tag: '', ref: '', detail: '', checkedAt: null };
+// popover.html finishSwoosh(): lit, then park (#58), then 500 ms parked (a guess) before the restart.
+const FINISH_MS = 350 + 600 + 500 + 500;
+// The popover contract field (#48), always set since #57: the panel always shows a status.
+// No ref since #58: the popover shows the tag only; check() still returns ref for the log.
+let update = { phase: 'checking', tag: '', detail: '', checkedAt: null };
 let updateBusy = false;   // one check at a time
 let restartStarted = false;
 
@@ -624,13 +627,13 @@ async function checkForUpdate() {
     console.log(`${new Date().toISOString()} update: check: ` +
       `${phase === 'current' ? `${tag} current` : phase === 'ahead' ? `${ref} ahead of ${tag}`
         : phase === 'blocked' ? `${tag} blocked (${reason})` : `${tag} available`}`);
-    setUpdate({ phase, tag, ref, detail: reason || '', checkedAt: Date.now() });
+    setUpdate({ phase, tag, detail: reason || '', checkedAt: Date.now() });
   } catch (e) {
     console.log(`${new Date().toISOString()} update: check failed: ${e.message}`);
     // Only a status line gives way: a newer tag already fetched keeps its line and
     // button, and an update under way or failed keeps its own line.
     if (['checking', 'current', 'ahead', 'check-failed'].includes(update.phase))
-      setUpdate({ phase: 'check-failed', tag: '', ref: '', detail: '', checkedAt: update.checkedAt });
+      setUpdate({ phase: 'check-failed', tag: '', detail: '', checkedAt: update.checkedAt });
   } finally {
     updateBusy = false;
   }
@@ -648,6 +651,7 @@ async function runUpdate() {
     else {
       await updater.install(__dirname, tag);
       setUpdate({ ...update, phase: 'restarting', detail: '' });
+      await new Promise((done) => setTimeout(done, FINISH_MS)); // the popover's finish plays out first
     }
   } catch (e) {
     console.error(`${new Date().toISOString()} update: ${tag} failed: ${e.message}`);
