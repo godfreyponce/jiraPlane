@@ -11,6 +11,33 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Overlays as AeroSpace popups: `closable: false` alone is not enough — #55 (2026-10-19) — ACCEPTED & CLOSED; no code (spike)
+
+The question was whether `closable: false` on the flight overlays makes AeroSpace treat them
+as popups, as it does the tray panel since #54, so the overlays could drop
+`releaseFromTilingWM`. Alone, it does not: the overlay still has an `AXCloseButton`,
+AeroSpace classifies it `dialog`, adopts it, and moves both overlays to the focused monitor.
+With `minimizable: false` and `maximizable: false` added (the panel's other two flags), the
+`AXCloseButton` is gone, the overlays are `popup`, AeroSpace lists neither, and each stays on
+its own display. The spike patch was reverted; nothing shipped.
+
+- **Proven:** worktree, two displays (built-in 1512x982@0,0, external 1920x1080@1512,0),
+  AeroSpace 0.21.3, release skipped by an env-guarded patch, focus on each monitor in turn,
+  probes 1 s and 3 s after the `flight:` line. Control (closable default): both overlays on
+  the focused monitor's workspace (2 or 8), `AXCloseButton` present, type `dialog`. `closable:
+  false` alone: identical to the control in both directions. Plus `minimizable`/`maximizable:
+  false`: `AXCloseButton: null`, type `popup`, parent `MacosPopupWindowsContainer`, no
+  workspace, not in `list-windows`, built-in overlay at `0,0 1512x982` and external at
+  `1512,0 1920x1080` at both probes, both directions. Every run exited within 1 s of SIGTERM
+  mid-flight (with `before-quit` calling `setClosable(true)` on live overlays), all at layer 1000.
+- **What the plan got wrong:** nothing. #6's "closable:false doesn't help" was true of
+  `closable` alone; the panel's two extra flags are the difference.
+- **Deferred:** the removal itself (draft title: "Overlays become AeroSpace popups —
+  closable/minimizable/maximizable false, drop releaseFromTilingWM"), not filed; the owner
+  decides. Not covered: which of `minimizable`/`maximizable` is needed (both changed at
+  once), stacked displays, one display, the #9 tag click and #11/#15 drag under these flags,
+  and the tray Quit path (only SIGTERM was run).
+
 ## Popover always shows update status — #57 (2026-10-19) — ACCEPTED & CLOSED; commit 8708930
 
 The #48 header line is always there now. `updater.check()` returns where HEAD stands against
