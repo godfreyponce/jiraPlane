@@ -1,6 +1,6 @@
 {
   "name": "jiraplane",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "macOS menu-bar app that flies a plane across the screen on Jira activity",
   "main": "main.js",
   "scripts": {
