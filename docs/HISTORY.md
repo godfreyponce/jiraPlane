@@ -11,6 +11,39 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Login LaunchAgent keeps its console output — #19 (2026-10-19) — ACCEPTED & CLOSED; commit 0a5880e
+
+The `com.jiraplane.app` plist set no `StandardOutPath` or `StandardErrorPath`, so the
+always-on login instance wrote its console output nowhere. `scripts/install-login-launch.sh`
+now writes both keys, set to `$HOME/Library/Logs/jiraplane.log` (one file, so stdout and
+stderr lines stay in order; `$HOME` expands at install time because launchd does not expand
+`~`). The `--write-only` path (#29, the Settings toggle) writes the same heredoc and gets the
+keys with no extra code. No rotation: growth is a measured note in ONBOARDING step 6. No
+`.js` change; the app logs exactly what it logged before.
+
+- **Proven:** temp-`HOME` `--write-only` run before the change: `plutil -p` had no
+  `StandardOutPath`; after: `plutil -lint` OK and both keys equal `<temp HOME>/Library/Logs/jiraplane.log`.
+  Failure-line sizes from `poller.cycle()` with a stubbed `fetch`: 54 B (HTTP 401), 32 B
+  (`fetch failed`), 60 B (timeout), so an all-day outage writes at most 60 x 1440 = 86,400 B
+  a day. Full check from the worktree, `.env` loaded from the main folder into the process
+  env: `env -u ELECTRON_RUN_AS_NODE TEAMS_WEBHOOK_URL= TEST_FLIGHT=1 npm start` flew
+  `assigned PROJ-142` across both displays, seeded 1 comment and 43 assignments, wrote state
+  at 17:35:18, 17:36:18 and 17:37:18 UTC; 284 B of app output (flight 172, seed 58, update
+  check 54), no Chromium stderr noise, no `poll cycle failed`. Event rate from the main
+  folder's `state.json`: about 12 events in the last 30 days. Live check at landing: not run (it needs main's installer, which
+  the landing does not run, and a Test flight click from the panel); it is the owner's first step
+  after the push. Main-folder check after the merge, same command: flew `assigned PROJ-142`,
+  `update: check: nothing newer`, a poll cycle at 17:46:37 UTC, 265 B log, no `poll cycle failed`.
+  Fresh review: 0 Critical, 2 Important (one fixed in the ONBOARDING text, one is the live
+  check at landing).
+- **What the plan got wrong:** Step 8 (restore the login job with main's installer) was
+  refused by the build session's auto-mode classifier; the login job stays booted out until
+  the owner re-runs main's installer, which is also the live check.
+- **Deferred minors:** the growth note omits display-change lines and Teams-sink failure
+  lines (the latter logs the response body unbounded); a proxy returning HTML makes a
+  failure line of about 70-90 B, above the stated 60; poll-failure and poller lines carry no
+  timestamp (pre-existing); a crash loop writes a stack trace per KeepAlive respawn.
+
 ## A mention added by editing an older comment flies — #43 (2026-10-18) — ACCEPTED & CLOSED; commit d816462
 
 `collectRelevantComments()` dropped every comment created before the lookback window (#13's
