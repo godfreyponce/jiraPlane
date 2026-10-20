@@ -11,6 +11,28 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Settings window follow-ups: drop guard, refresh on focus — #44 (2026-10-20) — ACCEPTED & CLOSED; commit f2011d8
+
+Two small changes from the #29 final review. `settings.html` calls `preventDefault` on every
+`dragover` and `drop` on `document`, with no filter on the drag type. A dropped file, link, or
+text no longer navigates the window away from `settings.html` (close only hides the window, so
+before this it showed the dropped item until restart). `openSettings()` in `main.js` adds
+`settingsWin.on('focus', pushSettingsState)`, so a plist changed by hand (installer, `rm`)
+while the window is open shows on the next focus. `showSettings()` keeps its own push, so a
+show from hidden pushes twice; harmless, left as is. The ticket's third item (usage.md lists
+Launch at login) landed with #41; no change here.
+
+- **Proven:** a copy of standalone `settings.html` in headless Chrome, with the plan's
+  synthetic `DragEvent` snippet dispatched on `body`: `dragover false` / `drop false` before
+  the edit, `dragover true` / `drop true` after. Live from the worktree (`env -u
+  ELECTRON_RUN_AS_NODE TEAMS_WEBHOOK_URL= OPEN_SETTINGS=1 npm start`, owner's login instance
+  tray-quit first): with the real plist backed up and removed, Finder activated, then Electron
+  frontmost again, the window still showed Launch at login On before the `main.js` edit; after
+  it, the same steps showed Off, and with the backup copied back, On. `cmp` of backup and
+  restored plist exit 0; no `launchctl` call. Full check `TEST_FLIGHT=1 OPEN_SETTINGS=1` flew
+  `assigned PROJ-142` across both displays (`durMs=12034`) and opened the window on General.
+- **Owner's flight at gate 2:** accepted ("accepted, land it"); no flight notes given.
+
 ## Popover footer version line, update swoosh, npm version releases — #58 (2026-10-19) — ACCEPTED & CLOSED; commit 5d0f804
 
 The popover's update line left the header. It is now the panel's last row, under Quit after a
