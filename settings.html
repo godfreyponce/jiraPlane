@@ -471,6 +471,9 @@
   loginInput.addEventListener('change', () => api.set('launchAtLogin', loginInput.checked));
   $('testFlight').addEventListener('click', () => api.testFlight());
   $('openRepo').addEventListener('click', () => api.openRepo());
+  // A drop navigates the window away, and close only hides it (#44).
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => e.preventDefault());
 
   showPage(page);
 </script>

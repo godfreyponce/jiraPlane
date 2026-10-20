@@ -463,6 +463,8 @@ function openSettings() {
     settingsWin.hide();
   });
   settingsWin.webContents.on('did-finish-load', pushSettingsState);
+  // A plist changed by hand (installer, rm) while the window is open shows on the next focus (#44).
+  settingsWin.on('focus', pushSettingsState);
   settingsWin.once('ready-to-show', showSettings);
   settingsWin.loadFile('settings.html');
 }
