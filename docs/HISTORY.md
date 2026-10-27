@@ -11,6 +11,31 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Digest names its tickets — #59 (2026-10-27) — ACCEPTED & CLOSED; commit 954ae9d
+
+A flood-valve digest now says which tickets it collapsed. `poller.js` adds `digestItems()`,
+which groups the burst's events into one item per ticket in the order the poller found them,
+and the digest event gains `items` and `url` (`/issues/?jql=key in (K1, K2, ...)`, built once,
+reassigned-away tickets included). `teams.js` renders the items into the existing `snippet`
+field as `KEY Summary: assigned to you, 2 comments (A, B), mentioned you by C, reassigned to X`
+(or `unassigned`), one ticket per `; `-joined line, at most `DIGEST_MAX_LINES = 10` (owner's
+guess) then `+ N more, open the link`; the DM link is the event's `url`. `subline` keeps the
+counts; the old throttling sentence is gone. `main.js` uses `event.url` as the flight's click
+URL when set, so the digest plane's cargo tag opens the same search. No line breaks:
+`sanitize()` flattens them on purpose (the flow pastes fields into JSON string literals), so
+the ticket's one-line fallback shipped. Comment and mention authors are each listed once.
+
+- **Proven:** scratch harness `/tmp/jp59/harness.js` (stubbed Jira + Teams fetch) — scenarios
+  A (several events on one ticket merge into one line, exact key-in URL on both DM and event),
+  B (12 tickets: 10 lines + `+ 2 more`, URL holds all 12), C (quotes/backslash summary
+  sanitized, reassigned to nobody reads `unassigned`) red before the change, green after; D
+  (under the threshold: six individual events, no `items`/`url`) green both times. Live from
+  the worktree with the owner's login instance tray-quit: `TEST_FLIGHT=1` flew
+  `assigned PROJ-142` (test flight URL unchanged); `MAX_EVENTS_PER_CYCLE=0` seeded silently,
+  then rewrote `state.json` once a minute for two more cycles, no `poll cycle failed`. Fresh
+  opus review: 0 Critical, 0 Important.
+- **Owner's flight at gate 2:** accepted ("accepted, land it"); no flight notes given.
+
 ## Settings window follow-ups: drop guard, refresh on focus — #44 (2026-10-20) — ACCEPTED & CLOSED; commit f2011d8
 
 Two small changes from the #29 final review. `settings.html` calls `preventDefault` on every
