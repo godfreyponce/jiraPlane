@@ -217,8 +217,8 @@ function partitionRows(displays) {
 // each rendering its slice of its row's path, all rows synced to a shared
 // wall-clock start (issue #6's engine, partitioned per row).
 function createFlight(event) {
-  activeFlightUrl = event.issueKey && poller.config
-    ? `${poller.config.baseUrl}/browse/${event.issueKey}` : '';
+  activeFlightUrl = event.url || (event.issueKey && poller.config
+    ? `${poller.config.baseUrl}/browse/${event.issueKey}` : '');
   const displays = flyOn === 'main' ? [screen.getPrimaryDisplay()] : screen.getAllDisplays();
   const primary = screen.getPrimaryDisplay();
   const createdAt = Date.now();

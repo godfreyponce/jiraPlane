@@ -234,6 +234,35 @@ async function fetchAssignees(keys) {
   return out;
 }
 
+// One item per ticket, in the order the poller found it, so the digest can
+// name what it collapsed (#59).
+function digestItems(events) {
+  const byKey = new Map();
+  for (const ev of events) {
+    let item = byKey.get(ev.issueKey);
+    if (!item) {
+      item = {
+        issueKey: ev.issueKey,
+        summary: ev.snippet,
+        assigned: false,
+        commentAuthors: [],
+        mentionAuthors: [],
+        reassigned: false,
+        newAssignee: null,
+      };
+      byKey.set(ev.issueKey, item);
+    }
+    if (ev.type === 'assigned') item.assigned = true;
+    else if (ev.type === 'comment') item.commentAuthors.push(ev.author);
+    else if (ev.type === 'mention') item.mentionAuthors.push(ev.author);
+    else if (ev.type === 'reassigned') {
+      item.reassigned = true;
+      item.newAssignee = ev.newAssignee;
+    }
+  }
+  return [...byKey.values()];
+}
+
 // --- one polling cycle: returns plane events ({type, issueKey, snippet}) ---
 
 async function cycle() {
@@ -312,6 +341,8 @@ async function cycle() {
   // Flood valve: burst -> one digest (one plane AND one DM, same rules).
   if (events.length > config.maxEventsPerCycle) {
     console.log(`poller: flood valve — ${events.length} event(s) collapsed into a digest`);
+    const items = digestItems(events);
+    const keys = items.map((i) => i.issueKey).join(', ');
     return [{
       type: 'digest',
       issueKey: '',
@@ -321,6 +352,9 @@ async function cycle() {
         assigned: newlyAssigned.length,
         reassigned: reassigned.length,
       },
+      items,
+      // One URL for both the DM link and the plane's cargo tag (main.js).
+      url: `${config.baseUrl}/issues/?jql=` + encodeURIComponent(`key in (${keys})`),
     }];
   }
 

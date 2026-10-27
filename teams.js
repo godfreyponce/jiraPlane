@@ -44,6 +44,27 @@ function payload(ticket, summary, headline, subline, snippet, url) {
   };
 }
 
+const DIGEST_MAX_LINES = 10; // owner's guess (#59), not a measured limit
+
+const unique = (names) => [...new Set(names)];
+
+// `KEY Summary: assigned to you, 2 comments (A, B), mentioned you by C`
+function digestLine(item) {
+  const parts = [];
+  if (item.assigned) parts.push('assigned to you');
+  const n = item.commentAuthors.length;
+  if (n) {
+    parts.push(`${n} ${n === 1 ? 'comment' : 'comments'} (${unique(item.commentAuthors).join(', ')})`);
+  }
+  if (item.mentionAuthors.length) {
+    parts.push(`mentioned you by ${unique(item.mentionAuthors).join(', ')}`);
+  }
+  if (item.reassigned) {
+    parts.push(item.newAssignee ? `reassigned to ${item.newAssignee}` : 'unassigned');
+  }
+  return `${item.issueKey} ${item.summary}: ${parts.join(', ')}`;
+}
+
 function payloadForEvent(ev) {
   const base = config.baseUrl;
   switch (ev.type) {
@@ -80,14 +101,20 @@ function payloadForEvent(ev) {
       if (c.assigned) parts.push(`${c.assigned} ticket(s) assigned to you`);
       if (c.reassigned) parts.push(`${c.reassigned} ticket(s) reassigned away`);
       const total = (c.comments || 0) + (c.assigned || 0) + (c.reassigned || 0);
+      // Teams flow fields are single-line (sanitize() flattens newlines), so
+      // the ticket list rides in `snippet`, one ticket per `; `-joined line.
+      const items = ev.items || [];
+      const lines = items.slice(0, DIGEST_MAX_LINES).map(digestLine);
+      if (items.length > DIGEST_MAX_LINES) {
+        lines.push(`+ ${items.length - DIGEST_MAX_LINES} more, open the link`);
+      }
       return payload(
         'Digest',
         `${total} Jira updates this cycle`,
         'Update burst.',
         parts.join(', ') + '.',
-        `More than ${config.maxEventsPerCycle} alerts in one cycle were ` +
-          'collapsed into this digest to avoid webhook throttling.',
-        `${base}/issues/?jql=assignee%20%3D%20currentUser()`
+        lines.join('; '),
+        ev.url
       );
     }
     default:
