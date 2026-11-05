@@ -724,7 +724,9 @@ function windowsTaskbarIsDark() {
   const { stdout } = spawnSync('reg', ['query',
     'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize',
     '/v', 'SystemUsesLightTheme'], { encoding: 'utf8', windowsHide: true });
-  return /REG_DWORD\s+0x0\s*$/m.test(stdout);
+  const value = /REG_DWORD\s+(0x[01])\s*$/m.exec(stdout)?.[1];
+  if (!value) console.log(`${new Date().toISOString()} tray: cannot read the taskbar mode, using the black plane`);
+  return value === '0x0';
 }
 
 // Windows has no template images, so it gets a plane in the color its taskbar needs.
