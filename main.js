@@ -1,5 +1,5 @@
 const { app, Tray, BrowserWindow, screen, nativeImage, shell, ipcMain } = require('electron');
-const { execFile } = require('child_process');
+const { execFile, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const poller = require('./poller');
@@ -715,12 +715,29 @@ function withLoginJob(cb) {
   });
 }
 
+const WM_SETTINGCHANGE = 0x1a;
+
+// The taskbar's mode can differ from the apps' mode, and on Electron 43.2.0
+// nativeTheme.shouldUseDarkColorsForSystemIntegratedUI follows the apps' mode
+// (measured on the VM, #62), so read the taskbar's own value. A missing value reads as light.
+function windowsTaskbarIsDark() {
+  const { stdout } = spawnSync('reg', ['query',
+    'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize',
+    '/v', 'SystemUsesLightTheme'], { encoding: 'utf8', windowsHide: true });
+  return /REG_DWORD\s+0x0\s*$/m.test(stdout);
+}
+
+// Windows has no template images, so it gets a plane in the color its taskbar needs.
+function trayIcon() {
+  const useWhite = process.platform === 'win32' && windowsTaskbarIsDark();
+  return nativeImage.createFromPath(
+    path.join(__dirname, 'assets', useWhite ? 'iconWhite.png' : 'iconTemplate.png')
+  );
+}
+
 app.whenReady().then(() => {
   app.dock?.hide();
-  const icon = nativeImage.createFromPath(
-    path.join(__dirname, 'assets', 'iconTemplate.png')
-  );
-  tray = new Tray(icon);
+  tray = new Tray(trayIcon());
   tray.setToolTip('jiraPlane');
   // Otherwise a fast second click arrives as 'double-click', not 'click', and
   // the panel ignores it.
@@ -731,6 +748,11 @@ app.whenReady().then(() => {
   tray.on('click', (e, bounds) => togglePopover(bounds));
   tray.on('right-click', (e, bounds) => togglePopover(bounds));
   createPopover();
+  if (process.platform === 'win32') {
+    // nativeTheme fires no 'updated' when only the taskbar's mode changes (measured, #62).
+    // Windows sends this message to every top-level window, hidden ones too.
+    popoverWin.hookWindowMessage(WM_SETTINGCHANGE, () => tray.setImage(trayIcon()));
+  }
   // Display changes (#22): a flight keeps the display set it was created
   // with. Rebuilding overlays mid-flight would drop the #11/#15 drag state,
   // and a display that wakes mid-flight is in the next flight. Logged only.
