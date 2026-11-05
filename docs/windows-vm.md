@@ -16,8 +16,7 @@ Run these from Mac Terminal. They need the `windows-vm` alias from Setup step 6.
 ssh -o BatchMode=yes windows-vm 'powershell -NoProfile -Command "Get-CimInstance Win32_OperatingSystem | Format-List Caption,Version,OSArchitecture"'
 ```
 
-**Start the app on the VM's desktop.** Put env vars after the script name as `KEY=VALUE`. The app
-crashes on launch on Windows until #62 lands.
+**Start the app on the VM's desktop.** Put env vars after the script name as `KEY=VALUE`.
 
 ```bash
 ssh windows-vm 'powershell -NoProfile -ExecutionPolicy Bypass -File jiraPlane\scripts\windows-vm-start.ps1 TEST_FLIGHT=1 TEAMS_WEBHOOK_URL='
