@@ -494,6 +494,11 @@ const POPOVER_SIZE = { width: 320, height: 232 }; // the empty state with the #5
 const POPOVER_GAP = 5; // px under the icon, as on the #37 stage (24 px menu bar, panel at 29)
 let popoverWin = null;
 let popoverClock = null; // the 1 s re-send while the panel is open (#39)
+let popoverTrayBounds = null; // win32: the rectangle the open panel is anchored to
+// On Windows a press on the icon blurs the panel at once, and the tray's click
+// arrives only at release (measured, #64: 808-899 ms after blur on an 800 ms
+// hold), so no time window can tell that click from one that opens the panel.
+let popoverBlurredByTrayPress = false;
 
 // The #37 contract. flights is the ring in contract shape, newest first (#40).
 function popoverState() {
@@ -529,10 +534,16 @@ function createPopover() {
     skipTaskbar: true,
     acceptFirstMouse: true, // the first click picks a row instead of focusing (#9)
     show: false,
+    // Windows has no blur behind the page, so its rgba(30,30,32,.72) panel needs this RGB there.
+    ...(process.platform === 'win32' && { backgroundColor: '#1e1e20' }),
     webPreferences: { contextIsolation: true, sandbox: true,
                       preload: path.join(__dirname, 'preload-popover.js') },
   });
-  popoverWin.on('blur', () => popoverWin.hide());
+  popoverWin.on('blur', () => {
+    // A hidden panel blurs too (measured, #64), and that press is one that opens it.
+    if (process.platform === 'win32' && popoverWin.isVisible()) popoverBlurredByTrayPress = cursorOnTray();
+    popoverWin.hide();
+  });
   // While the panel is open, main re-sends the state once a second so the
   // relative time counts up; the page runs no timer (#39). 1 s is the finest
   // unit the page's ago() prints.
@@ -553,15 +564,72 @@ function createPopover() {
   popoverWin.loadFile('popover.html');
 }
 
+// Centers the panel on the icon, POPOVER_GAP from the taskbar, like Windows' own
+// tray flyouts. The min and max with the tray's edge are for an auto-hidden
+// taskbar and the ^ flyout, where the icon sits inside the work area.
+function windowsPopoverBounds(trayBounds, { bounds, workArea }, width, height) {
+  const workRight = workArea.x + workArea.width;
+  const workBottom = workArea.y + workArea.height;
+  const centerX = trayBounds.x + trayBounds.width / 2;
+  const centerY = trayBounds.y + trayBounds.height / 2;
+  const reserved = {
+    bottom: bounds.y + bounds.height - workBottom,
+    top: workArea.y - bounds.y,
+    left: workArea.x - bounds.x,
+    right: bounds.x + bounds.width - workRight,
+  };
+  // Auto-hide reserves nothing, so the work area equals the display.
+  const fromDisplayEdge = {
+    bottom: bounds.y + bounds.height - centerY,
+    top: centerY - bounds.y,
+    left: centerX - bounds.x,
+    right: bounds.x + bounds.width - centerX,
+  };
+  const edges = ['bottom', 'top', 'left', 'right'];
+  const edge = edges.find((e) => reserved[e] > 0) ||
+    edges.reduce((a, b) => (fromDisplayEdge[a] <= fromDisplayEdge[b] ? a : b));
+  let x = centerX - width / 2;
+  let y = centerY - height / 2;
+  if (edge === 'bottom') y = Math.min(workBottom, trayBounds.y) - height - POPOVER_GAP;
+  if (edge === 'top') y = Math.max(workArea.y, trayBounds.y + trayBounds.height) + POPOVER_GAP;
+  if (edge === 'left') x = Math.max(workArea.x, trayBounds.x + trayBounds.width) + POPOVER_GAP;
+  if (edge === 'right') x = Math.min(workRight, trayBounds.x) - width - POPOVER_GAP;
+  return {
+    x: Math.round(Math.max(workArea.x, Math.min(x, workRight - width))),
+    y: Math.round(Math.max(workArea.y, Math.min(y, workBottom - height))),
+    width,
+    height,
+  };
+}
+
+function cursorOnTray() {
+  const { x, y } = screen.getCursorScreenPoint();
+  const icon = tray.getBounds();
+  return x >= icon.x && x < icon.x + icon.width && y >= icon.y && y < icon.y + icon.height;
+}
+
 function togglePopover(trayBounds) {
+  if (popoverBlurredByTrayPress) {
+    popoverBlurredByTrayPress = false;
+    return;
+  }
   if (popoverWin.isVisible()) return popoverWin.hide();
   const display = screen.getDisplayMatching(trayBounds);
   const { workArea } = display;
-  // Left edge under the icon's left edge (NSMenu-style), pulled left if the
-  // panel would run off the display.
-  const x = Math.round(Math.min(trayBounds.x, workArea.x + workArea.width - POPOVER_SIZE.width));
-  const y = Math.round(trayBounds.y + trayBounds.height + POPOVER_GAP);
-  popoverWin.setPosition(x, y);
+  let x, y;
+  if (process.platform === 'win32') {
+    popoverTrayBounds = trayBounds;
+    const [width, height] = popoverWin.getSize();
+    const panel = windowsPopoverBounds(trayBounds, display, width, height);
+    ({ x, y } = panel);
+    popoverWin.setBounds(panel);
+  } else {
+    // Left edge under the icon's left edge (NSMenu-style), pulled left if the
+    // panel would run off the display.
+    x = Math.round(Math.min(trayBounds.x, workArea.x + workArea.width - POPOVER_SIZE.width));
+    y = Math.round(trayBounds.y + trayBounds.height + POPOVER_GAP);
+    popoverWin.setPosition(x, y);
+  }
   // #22 habit: a panel in the wrong place can be explained from the log.
   console.log(`${new Date().toISOString()} popover: tray=${trayBounds.x},${trayBounds.y} ` +
     `${trayBounds.width}x${trayBounds.height} at=${x},${y} display=${describeDisplay(display)}`);
@@ -572,6 +640,12 @@ function togglePopover(trayBounds) {
   // Below the overlays' 'screen-saver': a flight always renders above the
   // popover. After show, which can re-stack (#12).
   popoverWin.setAlwaysOnTop(true, 'pop-up-menu');
+  // Windows keeps both levels in one topmost band, and the last raised is on top (#64).
+  if (process.platform === 'win32') {
+    (activeFlight || []).forEach((win) => {
+      if (!win.isDestroyed()) win.setAlwaysOnTop(true, 'screen-saver');
+    });
+  }
 }
 
 // Popover rows act like menu items: the panel closes, then the action runs.
@@ -590,10 +664,17 @@ ipcMain.on('popover-set-paused', (e, paused) => {
 });
 // The page sends its panel height after each render (#39). A config error
 // wraps the status to two lines, taller than the 232 px empty state. setSize
-// keeps the top edge, so the panel grows downward from the menu bar.
+// keeps the top edge, so the panel grows downward from the menu bar. On Windows
+// the panel grows away from the taskbar instead.
 ipcMain.on('popover-fit', (e, height) => {
   const [width, current] = popoverWin.getSize();
-  if (Number.isInteger(height) && height !== current) popoverWin.setSize(width, height);
+  if (!Number.isInteger(height) || height === current) return;
+  if (process.platform === 'win32' && popoverTrayBounds) {
+    popoverWin.setBounds(windowsPopoverBounds(popoverTrayBounds,
+      screen.getDisplayMatching(popoverTrayBounds), width, height));
+  } else {
+    popoverWin.setSize(width, height);
+  }
 });
 ipcMain.on('popover-update', () => runUpdate()); // the panel stays open to show the swoosh (#58)
 
@@ -749,6 +830,8 @@ app.whenReady().then(() => {
   // too, and 'click' is never emitted.
   tray.on('click', (e, bounds) => togglePopover(bounds));
   tray.on('right-click', (e, bounds) => togglePopover(bounds));
+  // setIgnoreDoubleClickEvents does nothing on Windows.
+  if (process.platform === 'win32') tray.on('double-click', (e, bounds) => togglePopover(bounds));
   createPopover();
   if (process.platform === 'win32') {
     // nativeTheme fires no 'updated' when only the taskbar's mode changes (measured, #62).
