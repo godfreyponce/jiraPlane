@@ -495,6 +495,10 @@ const POPOVER_GAP = 5; // px under the icon, as on the #37 stage (24 px menu bar
 let popoverWin = null;
 let popoverClock = null; // the 1 s re-send while the panel is open (#39)
 let popoverTrayBounds = null; // win32: the rectangle the open panel is anchored to
+// On Windows a press on the icon blurs the panel at once, and the tray's click
+// arrives only at release (measured, #64: 808-899 ms after blur on an 800 ms
+// hold), so no time window can tell that click from one that opens the panel.
+let popoverBlurredByTrayPress = false;
 
 // The #37 contract. flights is the ring in contract shape, newest first (#40).
 function popoverState() {
@@ -535,7 +539,11 @@ function createPopover() {
     webPreferences: { contextIsolation: true, sandbox: true,
                       preload: path.join(__dirname, 'preload-popover.js') },
   });
-  popoverWin.on('blur', () => popoverWin.hide());
+  popoverWin.on('blur', () => {
+    // A hidden panel blurs too (measured, #64), and that press is one that opens it.
+    if (process.platform === 'win32' && popoverWin.isVisible()) popoverBlurredByTrayPress = cursorOnTray();
+    popoverWin.hide();
+  });
   // While the panel is open, main re-sends the state once a second so the
   // relative time counts up; the page runs no timer (#39). 1 s is the finest
   // unit the page's ago() prints.
@@ -594,7 +602,17 @@ function windowsPopoverBounds(trayBounds, { bounds, workArea }, width, height) {
   };
 }
 
+function cursorOnTray() {
+  const { x, y } = screen.getCursorScreenPoint();
+  const icon = tray.getBounds();
+  return x >= icon.x && x < icon.x + icon.width && y >= icon.y && y < icon.y + icon.height;
+}
+
 function togglePopover(trayBounds) {
+  if (popoverBlurredByTrayPress) {
+    popoverBlurredByTrayPress = false;
+    return;
+  }
   if (popoverWin.isVisible()) return popoverWin.hide();
   const display = screen.getDisplayMatching(trayBounds);
   const { workArea } = display;
@@ -622,6 +640,12 @@ function togglePopover(trayBounds) {
   // Below the overlays' 'screen-saver': a flight always renders above the
   // popover. After show, which can re-stack (#12).
   popoverWin.setAlwaysOnTop(true, 'pop-up-menu');
+  // Windows keeps both levels in one topmost band, and the last raised is on top (#64).
+  if (process.platform === 'win32') {
+    (activeFlight || []).forEach((win) => {
+      if (!win.isDestroyed()) win.setAlwaysOnTop(true, 'screen-saver');
+    });
+  }
 }
 
 // Popover rows act like menu items: the panel closes, then the action runs.
@@ -806,6 +830,8 @@ app.whenReady().then(() => {
   // too, and 'click' is never emitted.
   tray.on('click', (e, bounds) => togglePopover(bounds));
   tray.on('right-click', (e, bounds) => togglePopover(bounds));
+  // setIgnoreDoubleClickEvents does nothing on Windows.
+  if (process.platform === 'win32') tray.on('double-click', (e, bounds) => togglePopover(bounds));
   createPopover();
   if (process.platform === 'win32') {
     // nativeTheme fires no 'updated' when only the taskbar's mode changes (measured, #62).
