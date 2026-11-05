@@ -534,7 +534,7 @@ function createPopover() {
     skipTaskbar: true,
     acceptFirstMouse: true, // the first click picks a row instead of focusing (#9)
     show: false,
-    // No vibrancy on Windows, so the page's rgba(30,30,32,.72) panel needs this RGB behind it.
+    // Windows has no blur behind the page, so its rgba(30,30,32,.72) panel needs this RGB there.
     ...(process.platform === 'win32' && { backgroundColor: '#1e1e20' }),
     webPreferences: { contextIsolation: true, sandbox: true,
                       preload: path.join(__dirname, 'preload-popover.js') },
