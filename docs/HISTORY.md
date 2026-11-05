@@ -11,6 +11,32 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## App starts on Windows — #62 (2026-11-05) — ACCEPTED & CLOSED; commits a971a18, 23c9055, 58b9a85
+
+The first complete path on Windows: the app starts, its tray icon can be seen, and one test flight
+crosses the screen. Two guards remove the two startup crashes (`process.getuid`, `app.dock`).
+Windows has no template images, so the tray uses the existing black plane on a light taskbar and a
+new white plane (`assets/iconWhite*`, the popover stage's plane) on a dark one, and swaps with no
+restart. The Mac runs none of this and loads the same file as before.
+
+The plan's mode check did not work. On Electron 43.2.0,
+`nativeTheme.shouldUseDarkColorsForSystemIntegratedUI` follows `AppsUseLightTheme`, not the taskbar,
+and `updated` does not fire when only the taskbar changes. So `main.js` reads
+`SystemUsesLightTheme` with `reg query` and picks the icon again on `WM_SETTINGCHANGE`, hooked on the
+hidden popover window. If `reg` gives no value, the plane stays black and the log says so.
+
+- **Proven on the VM:** red run `TypeError: process.getuid is not a function` at `main.js:681`. Fixed
+  run: flight line, `update: check failed: git not found`, no error text, `electron` count 6 during
+  the flight and 5 after. Screenshots: black plane on light, white on dark at launch, live swap both
+  ways, plane above a window with no box. Owner: flew above Notepad, white from launch.
+- **Proven on the Mac:** flight line, plane crossed, plane in the menu bar.
+- **Not tested:** a real Settings toggle (only a synthetic broadcast), a PC that blocks `reg.exe`, two
+  displays on Windows.
+- **Coworker's PC:** not run. The owner accepted without it, and `issue-62` was never pushed. Done
+  when box 6 stays open.
+
+---
+
 ## Windows test VM — #61 (2026-11-05) — ACCEPTED & CLOSED; commit 5bfb78a
 
 The Windows port (#60) now has somewhere to fly: a Windows 11 Arm VM in Parallels on the owner's
