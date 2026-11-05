@@ -11,6 +11,30 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Windows test VM — #61 (2026-11-05) — ACCEPTED & CLOSED; commit 5bfb78a
+
+The Windows port (#60) now has somewhere to fly: a Windows 11 Arm VM in Parallels on the owner's
+Mac, reached over the in-box OpenSSH server through a `windows-vm` alias and a key used only for
+it. `scripts/windows-vm-start.ps1` starts the app through a scheduled task, because Electron started
+directly over SSH runs in session 0, which has no desktop. It ends any running copy, clears the log,
+takes env vars as `KEY=VALUE`, and refuses a bad argument or an empty desktop with exit 1.
+`docs/windows-vm.md` holds the setup walkthrough and the version, start, stop, log, sync, and reset
+commands, with no IP, user name, or password. No app file changed.
+
+Setup found three things the plan did not expect: a new Windows has no Visual C++ runtime, which
+Electron's installer needs (owner approved a third VM install; #69 carries it to the Windows install
+docs); the SSH firewall rule covers Private networks and the VM's network is Public; Git for Windows'
+line ending default marks every synced file as changed, so the VM's clone turns it off.
+
+- **Proven:** control run over SSH: four `electron` in session 0, console in session 2. Through the
+  task: session 2, owner saw the window and a console window on the VM's desktop, log held
+  `probe-out PROBE_VALUE="first" TEAMS_WEBHOOK_URL="not-a-real-url"` and `probe-err`, both battery
+  flags False. Stop left no `electron` and the task `Ready`. Start over a running app left only the
+  new run in the log. Restart: Windows signed in by itself and the start worked. Signed out: exit 1
+  with the message. Throwaway probe, deleted before gate 2.
+- **Blank value:** `TEAMS_WEBHOOK_URL=` printed `undefined` on the VM, so it does not beat `.env`.
+- **Coworker's PC:** still open.
+
 ## Digest names its tickets — #59 (2026-10-27) — ACCEPTED & CLOSED; commit 954ae9d
 
 A flood-valve digest now says which tickets it collapsed. `poller.js` adds `digestItems()`,
