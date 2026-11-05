@@ -678,7 +678,7 @@ function restartApp() {
 
 // Launch at login (#29) wraps the #7 LaunchAgent: on = the plist exists.
 const LOGIN_PLIST = path.join(app.getPath('home'), 'Library', 'LaunchAgents', 'com.jiraplane.app.plist');
-const LOGIN_SERVICE = `gui/${process.getuid()}/com.jiraplane.app`;
+const LOGIN_SERVICE = `gui/${process.getuid?.()}/com.jiraplane.app`;
 const INSTALLER = path.join(__dirname, 'scripts', 'install-login-launch.sh');
 let loginToggleBusy = false;
 
@@ -716,7 +716,7 @@ function withLoginJob(cb) {
 }
 
 app.whenReady().then(() => {
-  app.dock.hide();
+  app.dock?.hide();
   const icon = nativeImage.createFromPath(
     path.join(__dirname, 'assets', 'iconTemplate.png')
   );
