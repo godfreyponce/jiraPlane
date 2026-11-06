@@ -21,7 +21,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
   body {
-    font: 13px/1.3 -apple-system, BlinkMacSystemFont, sans-serif;
+    font: 13px/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--text); background: var(--pane);
     -webkit-user-select: none; user-select: none; cursor: default;
   }
@@ -51,7 +51,7 @@
   .nav button {
     display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px;
     border: 0; border-radius: 10px; background: transparent;
-    font: 13.5px -apple-system, BlinkMacSystemFont, sans-serif; color: #ececec;
+    font: 13.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #ececec;
     text-align: left;
   }
   .nav button[aria-current="page"] { background: #323232; }
@@ -66,7 +66,7 @@
   /* Right pane */
   .pane { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 20px 20px; }
   .pane-header { flex: none; height: 48px; display: flex; align-items: center; gap: 10px; }
-  .pane-header h1 { margin: 0; font: 700 16px -apple-system, BlinkMacSystemFont, sans-serif; }
+  .pane-header h1 { margin: 0; font: 700 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   .page { margin-top: 16px; }
 
   /* Preview strip: sky sketch (left) + display diagram (right) */
@@ -96,7 +96,7 @@
 
   .smoke span {
     position: absolute; width: 16px; text-align: center; line-height: 21px;
-    font: 800 20px/21px 'Arial Rounded MT Bold', -apple-system, sans-serif;
+    font: 800 20px/21px 'Arial Rounded MT Bold', -apple-system, 'Segoe UI', sans-serif;
     color: #f2f6ff;
     text-shadow: 0 0 6px rgba(240,246,255,.9), 0 0 14px rgba(240,246,255,.45);
   }
@@ -107,7 +107,7 @@
   .pill { position: absolute; left: 10px; top: 10px; display: none; align-items: center; gap: 5px;
           padding: 3px 9px 3px 7px; border-radius: 999px;
           background: rgba(18,18,18,.78); border: 1px solid rgba(255,255,255,.18);
-          font: 600 11px -apple-system, BlinkMacSystemFont, sans-serif; color: #f0f0f0; }
+          font: 600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #f0f0f0; }
   .preview[data-paused] .pill { display: flex; }
   .preview[data-paused] .sky { filter: brightness(.5) saturate(.35); }
   .preview[data-paused] .flight { opacity: .45; transform: translateY(14px); }
@@ -132,12 +132,12 @@
   .label { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .name { font-size: 13.5px; color: var(--text); }
   .help { font-size: 11.5px; color: var(--muted); }
-  .group-title { margin: 0 0 8px 16px; font: 600 13px -apple-system, BlinkMacSystemFont, sans-serif;
+  .group-title { margin: 0 0 8px 16px; font: 600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                  color: var(--heading); }
 
   .btn { flex: none; height: 26px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
          background: #3a3a3a; border: 1px solid #4a4a4a; border-radius: 7px;
-         font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); }
+         font: 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); }
   .btn:active { background: #464646; }
 
   /* Switch: the native checkbox sits invisibly on top of the drawn track */
@@ -156,7 +156,7 @@
   .seg { flex: none; display: inline-flex; gap: 2px; padding: 2px;
          background: #1f1f1f; border: 1px solid var(--card-border); border-radius: 8px; }
   .seg button { height: 24px; padding: 0 11px; border: 0; border-radius: 6px; background: transparent;
-                font: 12.5px -apple-system, BlinkMacSystemFont, sans-serif; color: #b5b5b5; }
+                font: 12.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #b5b5b5; }
   .seg button[aria-pressed="true"] { background: #4a4a4a; color: #fff;
                                      box-shadow: 0 1px 2px rgba(0,0,0,.35); }
 
@@ -167,7 +167,7 @@
   .tile-face { position: relative; width: 100%; height: 62px; display: grid; place-items: center;
                background: #373737; border-radius: 10px; box-shadow: inset 0 0 0 1px #444; }
   .tile[aria-pressed="true"] .tile-face { box-shadow: 0 0 0 3px var(--card), 0 0 0 6px var(--accent); }
-  .tile-label { font: 13px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--muted); }
+  .tile-label { font: 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--muted); }
   .tile[aria-pressed="true"] .tile-label { color: #fff; font-weight: 600; }
   .tile:focus-visible { outline-offset: 9px; }
 
@@ -178,7 +178,7 @@
               background: linear-gradient(180deg, #2a3658 0%, #50608c 58%, #c99272 100%);
               box-shadow: inset 0 .5px 0 rgba(255,255,255,.25), 0 6px 18px rgba(0,0,0,.4); }
   .app-icon svg { display: block; width: 84px; height: 84px; }
-  .about-name { font: 700 20px -apple-system, BlinkMacSystemFont, sans-serif; }
+  .about-name { font: 700 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
   .about-name .ver { font-weight: 400; color: var(--muted); }
 </style>
 </head>
@@ -288,7 +288,7 @@
             <rect x="109" y="76" width="6" height="6" fill="#555"/>
             <rect x="102" y="82" width="20" height="2.4" rx="1.2" fill="#666"/>
           </g>
-          <g font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10"
+          <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10"
              fill="#8e8e8e" text-anchor="middle">
             <text x="45" y="98">Main</text>
             <text x="112" y="98">Second</text>
@@ -365,7 +365,7 @@
           <button type="button" class="tile" data-key="bannerStyle" data-value="skywriter">
             <span class="tile-face">
               <svg width="96" height="40" viewBox="0 0 96 40" aria-hidden="true">
-                <g font-family="'Arial Rounded MT Bold', -apple-system, sans-serif" font-size="13"
+                <g font-family="'Arial Rounded MT Bold', -apple-system, 'Segoe UI', sans-serif" font-size="13"
                    font-weight="800" fill="#f2f6ff" stroke="#f2f6ff" stroke-width="3.5"
                    stroke-opacity=".18" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">
                   <text x="9"  y="21" opacity=".5">P</text>

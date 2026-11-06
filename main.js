@@ -449,7 +449,10 @@ function openSettings() {
   settingsWin = new BrowserWindow({
     width: 680, height: 460, useContentSize: true,
     resizable: false, maximizable: false, fullscreenable: false,
-    titleBarStyle: 'hiddenInset',
+    // hiddenInset draws no window controls on Windows; 'hidden' plus an overlay does.
+    ...(process.platform === 'win32'
+      ? { titleBarStyle: 'hidden', titleBarOverlay: { color: '#222222', symbolColor: '#f0f0f0' } }
+      : { titleBarStyle: 'hiddenInset' }),
     backgroundColor: '#222222',
     title: 'jiraPlane Settings',
     show: false,
