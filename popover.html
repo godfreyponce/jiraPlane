@@ -345,7 +345,7 @@ function updateLine(update) {
     case 'ahead':        return [update.tag, checked];
     case 'check-failed': return ["Couldn't check for updates", checked];
     case 'available':    return [`${update.tag} available`, ''];
-    case 'manual':       return [`${update.tag} available. See ONBOARDING § 7.`, ''];
+    case 'manual':       return [`${update.tag} available. See ONBOARDING § W5.`, ''];
     case 'installing':   return [`Updating to ${update.tag}…`, ''];
     case 'restarting':   return ['Restarting after this flight…', ''];
     case 'blocked':      return [`Can't update: ${update.detail}. See ONBOARDING § 7.`, ''];
