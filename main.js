@@ -696,6 +696,7 @@ ipcMain.on('popover-update', () => runUpdate()); // the panel stays open to show
 
 // Update check (#48): a new vX.Y.Z tag shows in the popover; one click checks
 // it out, runs npm install, and restarts once no plane is in the air.
+// On Windows a newer tag is phase 'manual' (#67): the line points to ONBOARDING, no button.
 const UPDATE_CHECK_MS = 24 * 60 * 60 * 1000; // "once a day" is #48's guess
 // popover.html finishSwoosh(): lit, then park (#58), then 500 ms parked (a guess) before the restart.
 const FINISH_MS = 350 + 600 + 500 + 500;
@@ -719,12 +720,14 @@ async function checkForUpdate() {
   updateBusy = true;
   try {
     const { tag, relation, ref } = await updater.check(__dirname);
-    const reason = relation === 'behind' && await updater.blocker(__dirname);
+    const manual = relation === 'behind' && process.platform === 'win32';
+    const reason = relation === 'behind' && !manual && await updater.blocker(__dirname);
     if (holdingFlights()) return; // the click landed while this check ran
     const phase = relation === 'on' ? 'current' : relation === 'ahead' ? 'ahead'
-      : reason ? 'blocked' : 'available';
+      : manual ? 'manual' : reason ? 'blocked' : 'available';
     console.log(`${new Date().toISOString()} update: check: ` +
       `${phase === 'current' ? `${tag} current` : phase === 'ahead' ? `${ref} ahead of ${tag}`
+        : phase === 'manual' ? `${tag} available, manual update (Windows)`
         : phase === 'blocked' ? `${tag} blocked (${reason})` : `${tag} available`}`);
     setUpdate({ phase, tag, detail: reason || '', checkedAt: Date.now() });
   } catch (e) {
