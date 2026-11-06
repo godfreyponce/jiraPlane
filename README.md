@@ -95,7 +95,7 @@ too, add `PLANE=0` for DMs without the plane.
 
 - Runs on your own Mac or Windows PC.
 - Windows lacks two things for now: the panel's one-click **Update** (you update
-  by hand, [ONBOARDING § W7](docs/ONBOARDING.md#w7-update)), and a restart after
+  by hand, [ONBOARDING § W5](docs/ONBOARDING.md#w5-update)), and a restart after
   a crash when it starts at login.
 - When your PAT expires, it's quiet. Set a reminder.
 - Since it runs on your computer, keep the computer awake. That is the only way

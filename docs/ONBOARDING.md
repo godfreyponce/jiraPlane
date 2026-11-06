@@ -194,13 +194,14 @@ still running code from before the popover (#41) shows a plain menu instead.
 
 ## Windows
 
-Every command in this section runs in Windows PowerShell. To open it: Start menu, type
-`PowerShell`, open **Windows PowerShell**. Do not run it as administrator.
+Run every command in this section in Windows PowerShell. Open the Start menu, type
+`PowerShell`, and open **Windows PowerShell**. Do not run it as administrator.
 
-### W1. Install the tools, clone, and install
+### W1. Install
 
-Find your PC type first: **Settings → System → About → System type**. It says
-"x64-based" or "ARM-based".
+Check your PC type in **Settings → System → About → System type**. It says
+"x64-based" or "ARM-based". Then install Git, Node.js LTS, and the Microsoft Visual
+C++ runtime, which Electron's installer needs.
 
 ```powershell
 winget install --id Git.Git -e --source winget
@@ -208,12 +209,13 @@ winget install --id OpenJS.NodeJS.LTS -e --source winget
 winget install --id Microsoft.VCRedist.2015+.x64 -e --source winget
 ```
 
-On an ARM-based PC, the last line ends in `.arm64` in place of `.x64`. That last
-one is the Microsoft Visual C++ runtime, which Electron's installer needs. Windows
-may ask you to allow changes. If it asks for an administrator password you don't
-have, ask IT to install Git, Node.js LTS, and the Visual C++ Redistributable, then
-go on with the clone below. When all three are done, close PowerShell and open a
-new one so it finds `git` and `node`.
+On an ARM-based PC, change `.x64` to `.arm64` on the last line. Windows may ask you to
+allow changes. If it asks for an administrator password you do not have, ask IT to
+install Git, Node.js LTS, and the Visual C++ Redistributable, then go on with the
+clone. When all three are installed, close PowerShell and open a new window so it
+finds `git` and `node`.
+
+Clone the repo and install it.
 
 ```powershell
 git clone https://github.com/godfreyponce/jiraPlane.git
@@ -221,110 +223,114 @@ cd jiraPlane
 npm.cmd install
 ```
 
-You should see `added N packages` and no errors. Use `npm.cmd`, not `npm`: Windows
-blocks the plain `npm` command in PowerShell by default (`running scripts is disabled
-on this system`), and `npm.cmd` is the same command without that block.
+You should see `added N packages` and no errors. Use `npm.cmd`, not `npm`. Windows
+blocks plain `npm` in PowerShell by default with `running scripts is disabled on this
+system`, and `npm.cmd` is the same command without that block.
 
-A missing `node_modules\electron\dist` folder right after `npm.cmd install` is
-normal. Electron downloads it the first time you start the app. If that first
-`npm.cmd start` (step W5) stops with `ERR_DLOPEN_FAILED` and names `extract-zip`,
-the Visual C++ runtime is missing. Run its `winget` line above, then:
+If `node_modules\electron\dist` is missing right after the install, that is normal.
+Electron downloads it the first time the app starts. If your first `npm.cmd start`
+(step W3) stops with `ERR_DLOPEN_FAILED` and names `extract-zip`, the Visual C++
+runtime is missing. Run its `winget` line above, then run this.
 
 ```powershell
 node node_modules\electron\install.js
 ```
 
-### W2. Create a Jira Personal Access Token
+### W2. Get your Jira values
 
-Same as [step 2](#2-create-a-jira-personal-access-token).
+Create a Jira Personal Access Token the same way as in
+[step 2](#2-create-a-jira-personal-access-token).
 
-### W3. Find your username and user key
-
-Replace both ALL-CAPS placeholders, the same way as in
-[step 3](#3-find-your-username-and-user-key):
+Find your username and user key with the command below. Replace both ALL-CAPS
+placeholders the same way as in [step 3](#3-find-your-username-and-user-key). Type
+`curl.exe`, not `curl`, because `curl` is a different command in Windows PowerShell.
 
 ```powershell
 (curl.exe -sS -i -H "Authorization: Bearer YOUR-PAT" "https://YOUR-JIRA-HOST/rest/api/2/myself") -split ',' | Select-String '^HTTP/','^x-ausername:','"(name|key)":' | Select-Object -First 4
 ```
 
-Type `curl.exe`, not `curl`. In Windows PowerShell, `curl` is a different command.
+You should see the same four lines as in step 3. Any other output is one of the three
+failures listed there. To see the raw response, run only the part inside the first
+parentheses.
 
-You should see the same four lines as in step 3, and anything else is one of the same
-three failures listed there. To see the raw response, run only the part inside the
-first parentheses.
+Pick your outputs the same way as in [step 4](#4-pick-your-outputs).
 
-### W4. Pick your outputs
+### W3. Configure and first flight
 
-Same as [step 4](#4-pick-your-outputs).
-
-### W5. Configure and first flight
+Create your `.env` and open it in Notepad.
 
 ```powershell
 Copy-Item .env.example .env
 notepad .env
 ```
 
-Fill in the values from steps W2 to W4, save, and close Notepad. Then:
+Fill in the values from step W2, save, and close Notepad. Then start the app.
 
 ```powershell
 npm.cmd start
 ```
 
-The plane icon lands in the corner of the taskbar, next to the clock. A new icon may
-sit behind the `^` arrow. Drag it onto the taskbar to keep it in view. Left click or
-right click the icon to open the panel next to the taskbar, then click **Test flight**
-to see the plane (and, if you set the webhook, a test DM).
+The plane icon appears in the corner of the taskbar, next to the clock. A new icon may
+hide behind the `^` arrow. Drag it onto the taskbar to keep it in view. Left click or
+right click the icon to open the panel next to the taskbar. Click **Test flight** to
+see the plane. If you set the webhook, you also get a test DM.
 
 Closing the PowerShell window stops the app. The first poll cycle seeds silently, the
 same as in [step 5](#5-configure-and-first-flight).
 
-### W6. Start at login
+### W4. Start at login
 
-Open the panel, click **Settings…**, open **General**, and switch **Launch at login**
-on. The app starts at your next sign-in, not now.
+Open the panel and click **Settings…**. Open **General** and switch **Launch at
+login** on. The app starts at your next sign-in, not now.
 
-The login start writes its output to `%APPDATA%\jiraplane\logs\jiraplane.log`. The
-file is never rotated, and it stays small (the sizes are in
-[step 6](#6-start-at-login)). To watch it:
+The login start writes its output to `%APPDATA%\jiraplane\logs\jiraplane.log`. Nothing
+rotates the file, and it stays small. [Step 6](#6-start-at-login) has the sizes. To
+watch it, run this.
 
 ```powershell
 Get-Content -Wait "$env:APPDATA\jiraplane\logs\jiraplane.log"
 ```
 
-It does not restart after a crash. Start it again with `npm.cmd start`, or sign out
-and back in. If you move the clone to another folder, switch **Launch at login** on
-again. Windows' **Startup apps** page lists the app as `Electron`.
+The app does not restart after a crash. Start it again with `npm.cmd start`, or sign
+out and back in. If you move the clone to another folder, switch **Launch at login**
+on again. Windows' **Startup apps** page lists the app as `Electron`.
 
-### W7. Update
+### W5. Update
 
 Windows has no **Update** button yet. When a new version is tagged, the panel shows
 `vX.Y.Z available` and points you here.
 
-First click **Quit** in the panel. Windows locks the app's files while it runs, and
-the install below can fail part way if the app is still open.
+Click **Quit** in the panel first. Windows locks the app's files while it runs, so the
+install below can fail part way if the app is still open.
+
+Fetch the tags.
 
 ```powershell
 git fetch --tags
 ```
 
-You should see a list of new tags, or nothing if there are none.
+You should see a list of new tags, or nothing if there are none. Check out the newest
+one.
 
 ```powershell
 git checkout "$(git tag -l 'v*' --sort=-v:refname | Select-Object -First 1)"
 ```
 
-You should see `HEAD is now at …`. A note about "detached HEAD" is expected: the app
-runs from a tagged version, not from a branch.
+You should see `HEAD is now at …`. A note about "detached HEAD" is expected, because
+the app runs from a tagged version, not from a branch.
 
-If it stops with `Your local changes to the following files would be overwritten by
-checkout` and names `package-lock.json`, an earlier install edited that file. Throw
-the edit away, then run the `git checkout` line above again.
+If the checkout stops with `Your local changes to the following files would be
+overwritten by checkout` and names `package-lock.json`, an earlier install edited that
+file. Throw the edit away.
 
 ```powershell
 git checkout package-lock.json
 ```
 
-You should see `Updated 1 path from the index`.
+You should see `Updated 1 path from the index`. Then run the `git checkout` line above
+again.
+
+Install the new version.
 
 ```powershell
 npm.cmd install
@@ -332,17 +338,15 @@ npm.cmd install
 
 You should see `up to date` or `added N packages`, and no errors.
 
-Then start it again with `npm.cmd start`, even if it starts at login (step W6). An
-update can bring a new Electron version, and only `npm.cmd start` downloads it.
-The sign-in start does not, so after such an update a sign-in alone starts nothing.
+Start the app again with `npm.cmd start`, even if it starts at login. An update can
+bring a new Electron version, and only `npm.cmd start` downloads it. The sign-in start
+does not, so after such an update a sign-in alone starts nothing.
 
 ### Windows quirks
 
-- **One instance at a time.** A second `npm.cmd start` prints `already running` and
-  exits.
-- **No polling while your PC sleeps.** Same catch-up rules as on the Mac.
-- **No restart after a crash**, even when it starts at login. Start it again by hand.
-- **The tray icon can hide behind the `^` arrow** in the taskbar, so a start that
-  looks like it did nothing may have worked.
-- PAT expiry, **Pause**, and DM failures work the same as in
-  [Known quirks](#known-quirks).
+Run one instance at a time. A second `npm.cmd start` prints `already running` and
+exits. The app does not poll while your PC sleeps, and it catches up by the same rules
+as on the Mac. It does not restart after a crash, even when it starts at login, so
+start it again by hand. The tray icon can hide behind the `^` arrow, so a start that
+looks like it did nothing may have worked. PAT expiry, **Pause**, and DM failures work
+the same as in [Known quirks](#known-quirks).
