@@ -11,6 +11,29 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Windows docs — #68 (2026-11-06) — ACCEPTED & CLOSED; commit fc51680
+
+README, ONBOARDING, and the `package.json` description no longer say macOS only. ONBOARDING keeps Mac
+steps 1 to 7 and "Known quirks" byte for byte and adds `## Windows` at the end: W1 to W7 plus "Windows
+quirks", all in Windows PowerShell, with npm called as `npm.cmd` (the default `Restricted` execution
+policy blocks `npm.ps1`). W1 names the Visual C++ Redistributable for x64 and Arm64 and the
+`ERR_DLOPEN_FAILED` / `extract-zip` symptom (#69, folded in). W7 is the Windows manual update: Quit
+first (Windows locks Electron's files), then fetch, checkout the newest tag, `npm.cmd install`, and
+always restart with `npm.cmd start`, because the login item runs `dist\electron.exe` directly and only
+`npm start` downloads a missing Electron. README's "Things to know" says Windows lacks the one-click
+Update and a restart after a crash. #67's panel was asked to point Windows at `ONBOARDING § W7`.
+
+Run: Step 5 doc checks (only intro lines 3 to 5 removed from ONBOARDING, no middle dots, all anchors
+resolve, no hosts or secrets). Mac: `TEST_FLIGHT=1 npm start` from the worktree flew `PROJ-142`
+across the one display (`durMs=12034`), `Polling disabled: missing JIRA_BASE_URL`, no DM.
+
+Not tested: the VM run from a fresh clone (W3 and W5 with a real `.env`, a real Jira flight and Teams
+DM, a flight under the login start, W7's runnable lines), waiting on #67. The winget installs on a
+clean PC and the x64 runtime package name. W7's checkout of a Windows-capable tag (none exists until
+the next release).
+
+---
+
 ## Launch at login on Windows — #66 (2026-11-06) — ACCEPTED & CLOSED; commit 2c89176
 
 On Windows, the Settings switch now calls Electron's login item: one `Run` value, `jiraPlane`, holding
