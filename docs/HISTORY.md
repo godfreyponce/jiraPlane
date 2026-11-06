@@ -11,6 +11,38 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Launch at login on Windows — #66 (2026-11-06) — ACCEPTED & CLOSED; commit 2c89176
+
+On Windows, the Settings switch now calls Electron's login item: one `Run` value, `jiraPlane`, holding
+`"<clone>\node_modules\electron\dist\electron.exe" "<clone>" --login-start`. The toggle reads
+`executableWillLaunchAtLogin` (true state, including Windows' Startup apps switch and a moved clone),
+because `openAtLogin` reads only the AppUserModelId value and ignores `name`. With `--login-start`, the
+top of `main.js` sends stdout and stderr to `%APPDATA%\jiraplane\logs\jiraplane.log` (sync append, no
+rotation). The Mac path is unchanged apart from reading through `launchAtLoginIsOn()`.
+
+Flown on the Windows 11 ARM64 VM with a fake `.env` (dead local address):
+
+- Registry probe, 6 rows, all as the plan expected: a path with a space round-trips and reads true;
+  a `StartupApproved` off value reads false and set-on clears it; a moved exe reads false; off removes
+  the value.
+- On, then reboot: Windows started one process in session 1 with the exact Run value; the tray icon sat
+  behind `^`; the log showed two `poll cycle failed:` lines a minute apart and no `Polling disabled`.
+- A second launch logged `jiraPlane already running - exiting this instance`, `LastTaskResult 0`, and
+  the login instance stayed the only process.
+- Off (clicked by the agent through in-VM screenshots and `SendInput`-style clicks): the value is gone,
+  the switch reads off after an app restart, and after a reboot nothing ran for 3.5 minutes.
+- Mac: `TEST_FLIGHT=1` flew across both displays and Settings read on, matching the plist. The Mac switch
+  was not flipped from the worktree.
+
+Found: `update: check failed: git not found` on every Windows start, login or not; `updater.js` splits
+PATH on `:` and looks for `git`, not `git.exe`. Already covered by #67. Facts for the Windows docs
+posted on #68.
+
+Not tested: a real launch from a folder with a space, a real Jira reply under the login start (#68), a
+crash under the login start (stays down by design), tray Quit under the login start.
+
+---
+
 ## Flight interactions on Windows — #63 (2026-11-05) — ACCEPTED & CLOSED; no code change
 
 The plan changed no code unless a check failed, and none did. Every flight box was flown on the Windows
