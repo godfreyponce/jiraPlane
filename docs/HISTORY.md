@@ -11,6 +11,41 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Flight interactions on Windows — #63 (2026-11-05) — ACCEPTED & CLOSED; no code change
+
+The plan changed no code unless a check failed, and none did. Every flight box was flown on the Windows
+11 ARM64 VM (Parallels, 200% scale) with fake Jira values and `TEST_FLIGHT=1`:
+
+- One display (`flyOn=all`, `gated=false`): click-through to Notepad and to Edge mid-flight; plane hover
+  sets `plane-hot` (model scale 1.07) and tag hover sets `#tag.hot` (slab scale 1.07); the tag click opens
+  `https://example.invalid/browse/PROJ-142` in Edge; the plane stays above maximized and F11 full-screen
+  Edge (Edge kept the foreground the whole flight); no box around the plane; drag follows and resumes
+  from the drop point; a press 70 px beside the plane reaches Notepad and is not a grab; the third
+  release fast-exits (about 4x) and the plane no longer lifts after it. Cargo tag text reads well in the
+  Comic Sans fallback.
+- Two displays (the Mac's built-in plus an LG, VM in full screen with `--fullscreen-use-all-displays`,
+  both at 200%): `flyOn=all gated=true displays=[1512x949 primary + 2560x1440@1512,-302]`; the plane's
+  global position is continuous across the seam and both overlays draw it while it straddles; a drag
+  from display 1 onto the LG keeps the plane under the cursor and it resumes from the drop. `flyOn=main
+  gated=true displays=[primary]`: one overlay page, and the LG showed no pixel change all flight.
+- Skywriter: the letters render correctly on Windows (read clearly over a dark page) but cannot be read
+  over a white window. Not Windows-specific; filed as #72.
+
+Not tested: mixed display scaling (the VM dropped to one display when the scale changed; the owner chose
+to skip, and the coworker check is recorded on #60), a real x64 PC.
+
+How the checks ran (the agent flew them at the owner's request; feel and timing were the owner's pass):
+PowerShell run as an interactive scheduled task in the VM's desktop session, `SendInput` with absolute
+(virtual-desktop) coordinates for the mouse, `CopyFromScreen` for evidence, and Electron started with
+`--remote-debugging-port=9222` so the overlay pages' class and rect state could be read over DevTools.
+Things that bit: Defender's AMSI blocks a script that both captures the screen and injects input (a
+one-folder exclusion was added for the run and removed after); `mouse_event` clicks did not register
+in the VM but `SendInput` with an absolute move did; in Windows PowerShell `move` is an alias for
+`Move-Item`, and aliases beat functions, so a helper named `Move` silently does nothing;
+`Invoke-RestMethod` passes a JSON array down the pipeline as one object, so assign before filtering.
+
+---
+
 ## Settings window can be closed on Windows — #65 (2026-11-05) — ACCEPTED & CLOSED; commit 326ad21
 
 On Windows the settings window was frameless with no controls: `hiddenInset` makes it frameless, and
