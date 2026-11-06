@@ -698,6 +698,10 @@ ipcMain.on('popover-update', () => runUpdate()); // the panel stays open to show
 // it out, runs npm install, and restarts once no plane is in the air.
 // On Windows a newer tag is phase 'manual' (#67): the line points to ONBOARDING, no button.
 const UPDATE_CHECK_MS = 24 * 60 * 60 * 1000; // "once a day" is #48's guess
+// The login job starts before Wi-Fi has an address, so the launch check can fail on
+// a healthy machine. Same cadence as the Jira poll, which recovers the same way.
+const UPDATE_RETRY_MS = poller.config.pollSeconds * 1000;
+let updateRetry = null;
 // popover.html finishSwoosh(): lit, then park (#58), then 500 ms parked (a guess) before the restart.
 const FINISH_MS = 350 + 600 + 500 + 500;
 // The popover contract field (#48), always set since #57: the panel always shows a status.
@@ -734,8 +738,11 @@ async function checkForUpdate() {
     console.log(`${new Date().toISOString()} update: check failed: ${e.message}`);
     // Only a status line gives way: a newer tag already fetched keeps its line and
     // button, and an update under way or failed keeps its own line.
-    if (['checking', 'current', 'ahead', 'check-failed'].includes(update.phase))
+    if (['checking', 'current', 'ahead', 'check-failed'].includes(update.phase)) {
       setUpdate({ phase: 'check-failed', tag: '', detail: '', checkedAt: update.checkedAt });
+      clearTimeout(updateRetry); // the daily check can fail with a retry pending
+      updateRetry = setTimeout(checkForUpdate, UPDATE_RETRY_MS);
+    }
   } finally {
     updateBusy = false;
   }
