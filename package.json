@@ -1,7 +1,7 @@
 {
   "name": "jiraplane",
   "version": "0.1.5",
-  "description": "macOS menu-bar app that flies a plane across the screen on Jira activity",
+  "description": "macOS menu-bar and Windows tray app that flies a plane across the screen on Jira activity",
   "main": "main.js",
   "scripts": {
     "start": "electron ."

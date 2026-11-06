@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/media/hero.svg" alt="A cream paper glider tows a big manila cargo tag reading: Assigned to you, PROJ-142: Fix login redirect. Below it the tagline: It flies across your screen when Jira needs you." width="830"></p>
 
-<p align="center"><code>MIT</code> <code>electron, one dependency</code> <code>macOS</code>&ensp;<samp><a href="https://github.com/godfreyponce">github</a> / <a href="https://www.linkedin.com/in/godfreyponce/">linkedin</a> / <a href="https://godfreyponce.dev">personal website</a></samp></p>
+<p align="center"><code>MIT</code> <code>electron, one dependency</code> <code>macOS</code> <code>Windows</code>&ensp;<samp><a href="https://github.com/godfreyponce">github</a> / <a href="https://www.linkedin.com/in/godfreyponce/">linkedin</a> / <a href="https://godfreyponce.dev">personal website</a></samp></p>
 
 A paper airplane that flies across your screen when something happens to you in
 Jira: someone hands you a ticket, someone @mentions you, someone comments on a
@@ -69,8 +69,8 @@ https://github.com/user-attachments/assets/038435b2-f935-4080-83bd-ff11265509f1
 I built this for my own desk, but really this part is for my coworkers, so you
 can get one too. Each of you runs your own copy: your clone, your Jira token,
 optionally your own webhook, and nobody can see anyone else's tickets. Not a
-coworker? It still works anywhere with a Mac, a Jira Data Center account, and
-Node.
+coworker? It still works anywhere with a Mac or a Windows PC, a Jira Data Center
+account, and Node.
 
 > [!NOTE]
 > [docs/ONBOARDING.md](docs/ONBOARDING.md) walks you through the whole thing from
@@ -85,16 +85,21 @@ cp .env.example .env      # four Jira values; docs/ONBOARDING.md shows where the
 ./scripts/install-login-launch.sh   # optional: start at login, restart after a crash
 ```
 
+On Windows the commands are different: follow the
+[Windows section of docs/ONBOARDING.md](docs/ONBOARDING.md#windows).
+
 Outputs are independent: plane only by default, set `TEAMS_WEBHOOK_URL` for DMs
 too, add `PLANE=0` for DMs without the plane.
 
 ## Things to know
 
-- Runs on your Mac.
-- macOS supported only (for now).
+- Runs on your own Mac or Windows PC.
+- Windows lacks two things for now: the panel's one-click **Update** (you update
+  by hand, [ONBOARDING § W7](docs/ONBOARDING.md#w7-update)), and a restart after
+  a crash when it starts at login.
 - When your PAT expires, it's quiet. Set a reminder.
-- Since it runs on your Mac, keep the Mac awake. That is the only way polling
-  stays alive.
+- Since it runs on your computer, keep the computer awake. That is the only way
+  polling stays alive.
 
 More: [one-pager](https://godfreyponce.github.io/jiraPlane/) for non-technical
 visitors, [docs/](docs/), and the predecessor,

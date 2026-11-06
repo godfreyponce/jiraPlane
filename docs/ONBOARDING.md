@@ -1,9 +1,10 @@
 # Setting this up for yourself
 
 This walks you from zero → a paper plane flying across your screen when Jira
-activity involves you. You need a Mac, a Jira Data Center account, Node.js, and
-about 15 to 30 mins if you also want Teams DMs. Nothing here requires Jira
-admin rights.
+activity involves you. You need a Mac or a Windows PC, a Jira Data Center account,
+Node.js, and about 15 to 30 mins if you also want Teams DMs. Nothing here requires
+Jira admin rights. On Windows, do the steps in the [Windows](#windows) section at
+the end instead.
 
 Each person runs their own copy: so your clone, your Jira token, optionally your
 own Teams webhook. No shared infrastructure; nobody can see anyone else's tickets.
@@ -190,3 +191,158 @@ still running code from before the popover (#41) shows a plain menu instead.
 - **Pause** (the switch in the tray panel, or *Pause polling* in Settings…)
   pauses both outputs — no planes and no DMs until resumed.
 - A DM failure is logged and dropped — there's no retry queue.
+
+## Windows
+
+Every command in this section runs in Windows PowerShell. To open it: Start menu, type
+`PowerShell`, open **Windows PowerShell**. Do not run it as administrator.
+
+### W1. Install the tools, clone, and install
+
+Find your PC type first: **Settings → System → About → System type**. It says
+"x64-based" or "ARM-based".
+
+```powershell
+winget install --id Git.Git -e --source winget
+winget install --id OpenJS.NodeJS.LTS -e --source winget
+winget install --id Microsoft.VCRedist.2015+.x64 -e --source winget
+```
+
+On an ARM-based PC, the last line ends in `.arm64` in place of `.x64`. That last
+one is the Microsoft Visual C++ runtime, which Electron's installer needs. Windows
+may ask you to allow changes. If it asks for an administrator password you don't
+have, ask IT to install Git, Node.js LTS, and the Visual C++ Redistributable, then
+go on with the clone below. When all three are done, close PowerShell and open a
+new one so it finds `git` and `node`.
+
+```powershell
+git clone https://github.com/godfreyponce/jiraPlane.git
+cd jiraPlane
+npm.cmd install
+```
+
+You should see `added N packages` and no errors. Use `npm.cmd`, not `npm`: Windows
+blocks the plain `npm` command in PowerShell by default (`running scripts is disabled
+on this system`), and `npm.cmd` is the same command without that block.
+
+A missing `node_modules\electron\dist` folder right after `npm.cmd install` is
+normal. Electron downloads it the first time you start the app. If that first
+`npm.cmd start` (step W5) stops with `ERR_DLOPEN_FAILED` and names `extract-zip`,
+the Visual C++ runtime is missing. Run its `winget` line above, then:
+
+```powershell
+node node_modules\electron\install.js
+```
+
+### W2. Create a Jira Personal Access Token
+
+Same as [step 2](#2-create-a-jira-personal-access-token).
+
+### W3. Find your username and user key
+
+Replace both ALL-CAPS placeholders, the same way as in
+[step 3](#3-find-your-username-and-user-key):
+
+```powershell
+(curl.exe -sS -i -H "Authorization: Bearer YOUR-PAT" "https://YOUR-JIRA-HOST/rest/api/2/myself") -split ',' | Select-String '^HTTP/','^x-ausername:','"(name|key)":' | Select-Object -First 4
+```
+
+Type `curl.exe`, not `curl`. In Windows PowerShell, `curl` is a different command.
+
+You should see the same four lines as in step 3, and anything else is one of the same
+three failures listed there. To see the raw response, run only the part inside the
+first parentheses.
+
+### W4. Pick your outputs
+
+Same as [step 4](#4-pick-your-outputs).
+
+### W5. Configure and first flight
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+Fill in the values from steps W2 to W4, save, and close Notepad. Then:
+
+```powershell
+npm.cmd start
+```
+
+The plane icon lands in the corner of the taskbar, next to the clock. A new icon may
+sit behind the `^` arrow. Drag it onto the taskbar to keep it in view. Left click or
+right click the icon to open the panel next to the taskbar, then click **Test flight**
+to see the plane (and, if you set the webhook, a test DM).
+
+Closing the PowerShell window stops the app. The first poll cycle seeds silently, the
+same as in [step 5](#5-configure-and-first-flight).
+
+### W6. Start at login
+
+Open the panel, click **Settings…**, open **General**, and switch **Launch at login**
+on. The app starts at your next sign-in, not now.
+
+The login start writes its output to `%APPDATA%\jiraplane\logs\jiraplane.log`. The
+file is never rotated, and it stays small (the sizes are in
+[step 6](#6-start-at-login)). To watch it:
+
+```powershell
+Get-Content -Wait "$env:APPDATA\jiraplane\logs\jiraplane.log"
+```
+
+It does not restart after a crash. Start it again with `npm.cmd start`, or sign out
+and back in. If you move the clone to another folder, switch **Launch at login** on
+again. Windows' **Startup apps** page lists the app as `Electron`.
+
+### W7. Update
+
+Windows has no **Update** button yet. When a new version is tagged, the panel shows
+`vX.Y.Z available` and points you here.
+
+First click **Quit** in the panel. Windows locks the app's files while it runs, and
+the install below can fail part way if the app is still open.
+
+```powershell
+git fetch --tags
+```
+
+You should see a list of new tags, or nothing if there are none.
+
+```powershell
+git checkout "$(git tag -l 'v*' --sort=-v:refname | Select-Object -First 1)"
+```
+
+You should see `HEAD is now at …`. A note about "detached HEAD" is expected: the app
+runs from a tagged version, not from a branch.
+
+If it stops with `Your local changes to the following files would be overwritten by
+checkout` and names `package-lock.json`, an earlier install edited that file. Throw
+the edit away, then run the `git checkout` line above again.
+
+```powershell
+git checkout package-lock.json
+```
+
+You should see `Updated 1 path from the index`.
+
+```powershell
+npm.cmd install
+```
+
+You should see `up to date` or `added N packages`, and no errors.
+
+Then start it again with `npm.cmd start`, even if it starts at login (step W6). An
+update can bring a new Electron version, and only `npm.cmd start` downloads it.
+The sign-in start does not, so after such an update a sign-in alone starts nothing.
+
+### Windows quirks
+
+- **One instance at a time.** A second `npm.cmd start` prints `already running` and
+  exits.
+- **No polling while your PC sleeps.** Same catch-up rules as on the Mac.
+- **No restart after a crash**, even when it starts at login. Start it again by hand.
+- **The tray icon can hide behind the `^` arrow** in the taskbar, so a start that
+  looks like it did nothing may have worked.
+- PAT expiry, **Pause**, and DM failures work the same as in
+  [Known quirks](#known-quirks).
