@@ -11,6 +11,33 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Settings window can be closed on Windows — #65 (2026-11-05) — ACCEPTED & CLOSED; commit 326ad21
+
+On Windows the settings window was frameless with no controls: `hiddenInset` makes it frameless, and
+the Window Controls Overlay turns on for Windows only under `titleBarStyle: 'hidden'`. Windows now gets
+`'hidden'` plus a `titleBarOverlay` in the pane's colors (`#222222` / `#f0f0f0`), so native minimize and
+close sit in the empty right end of the 48 px pane header (non-maximizable, so no maximize). The Mac
+keeps `hiddenInset`. Every font stack in `settings.html` gains `'Segoe UI'` after the Mac fonts, so the
+Mac never reaches it. The preview cargo tag's stack already reaches Comic Sans on Windows and stays.
+
+Checks: steps 1 to 8 of the VM flight were run by the agent at the owner's request, through `prlctl exec`
+clicks and in-VM screenshots: in front of a maximized Notepad, drag by sidebar and pane header, the three
+panes in Segoe UI with nothing clipped, close, minimize, and Alt+F4 each hide and come back (a throwaway
+5 s reopen hook on the VM, not the panel row), `flyOn=main` then `flyOn=all` flights, `settings.json`
+saved. Minimize then `show()` restores the window, so no `restore()` fallback was needed. The owner did
+the Mac pass. Landed after #64 by a clean rebase; the combined `main.js` got `node --check` only, because
+the owner's instance was running.
+
+Not tested: the 150% scale (the VM's custom scale factor is locked behind a sign-out), the panel's
+Settings row on Windows (#64's box), Arial Rounded on a PC with Office, a real x64 PC. The red (no
+buttons on the unchanged app) was never seen on screen; it rests on the Electron v43.2.0 source read.
+
+`prlctl exec --current-user` runs in the VM's desktop session, but a console app opens a Windows
+Terminal window over everything; a script that hides its own console window first avoids that.
+`prlctl capture` came back black while the app ran; an in-VM `CopyFromScreen` worked.
+
+---
+
 ## Tray panel opens in full view on Windows — #64 (2026-11-05) — ACCEPTED & CLOSED; commits 43abba6, 87b7fe0, 6436c7f
 
 Either tray click now opens the whole panel next to the Windows taskbar, a second click or a click
