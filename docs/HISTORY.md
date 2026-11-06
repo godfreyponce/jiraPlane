@@ -11,6 +11,36 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Windows update notice in the tray panel — #67 (2026-11-06) — ACCEPTED & CLOSED; commit 00c1848
+
+On Windows the update check now finds Git: `updater.js` splits PATH on `path.delimiter` (`;` there) and
+looks for `git.exe`; the npm-dir PATH join in `childEnv` uses `path.delimiter` too. `NPM_BIN` is
+unchanged. In `checkForUpdate()`, a newer tag on `win32` becomes a new phase, `manual`, and skips
+`updater.blocker()`; the log line reads `update: check: vX.Y.Z available, manual update (Windows)`. The
+panel shows `vX.Y.Z available. See ONBOARDING § 7.` in the `available` tone with no Update button.
+The install never runs on Windows because `runUpdate()` already returns for any phase but `available`,
+so `UPDATE_NOW=1` and the panel cannot start it. `manual` is not in the check-failure give-way list, so
+a later failed check keeps the line. The Mac path is the same lookup as before (`:` and `git`).
+
+Flown on the Windows 11 ARM64 VM, `TEAMS_WEBHOOK_URL=`:
+
+- Clone on `v0.1.5` with the worktree synced: `update: check: v0.1.5 current`, no `git not found`.
+- Clone on `v0.1.4`, `UPDATE_NOW=1`: `update: check: v0.1.5 available, manual update (Windows)`; no
+  `update: git`, `update: npm`, or restart line a minute later; HEAD stayed `55efed8` (= `v0.1.4`).
+- Owner read the panel on the VM: the last line shows `v0.1.5 available. See ONBOARDING § 7.` in full,
+  in blue, with no Update button (confirmed).
+- Browser preset `Manual (Windows)`: the line fits (238 of 290 px on the Mac font), no `.update-btn`;
+  the `Update` preset still shows its button.
+- Mac: the worktree `npm start` exited on the single-instance lock (the login instance was running);
+  `updater.check()` under plain node gave `{"tag":"v0.1.5","relation":"ahead","ref":"issue-67"}`.
+  The Mac `TEST_FLIGHT=1` flight and the Mac Update button were left to the owner.
+
+#68 told (comment) that the panel points to ONBOARDING § 7.
+
+Not tested: the Mac install path (code unchanged), an x64 Windows PC.
+
+---
+
 ## Windows docs — #68 (2026-11-06) — ACCEPTED & CLOSED; commit fc51680
 
 README, ONBOARDING, and the `package.json` description no longer say macOS only. ONBOARDING keeps Mac
