@@ -11,6 +11,37 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Tray panel opens in full view on Windows — #64 (2026-11-05) — ACCEPTED & CLOSED; commits 43abba6, 87b7fe0, 6436c7f
+
+Either tray click now opens the whole panel next to the Windows taskbar, a second click or a click
+elsewhere closes it, and a flight renders above it. A pure function works out the panel's rectangle
+from the taskbar's edge, so opening and every height change anchor to the taskbar and the bottom edge
+stays put as rows are added. The panel centers on the icon, like Windows' own tray flyouts, and has a
+solid `#1e1e20` window background and Segoe UI. The Mac runs none of this.
+
+The plan was wrong about the tray: `click` and `right-click` fire at release, not on press. A press
+blurs the panel within about 20 ms, and the click arrives at the end of the hold (808-899 ms after blur
+on an 800 ms hold), so a time window cannot work. The blur handler sets a flag when the panel is visible
+and the cursor is inside the tray's bounds, and the next tray event clears it and does nothing. The
+visible check is there because a hidden panel blurs too: the first version ate the tray click after the
+Test flight row. A fast second click arrives as `double-click` with no `click` after it, so that event
+also goes to the toggle, or it would leave the flag set.
+
+Stacking: on Windows the overlay and panel levels share one topmost band, and the last raised wins. A
+panel opened mid-flight covered the plane until `togglePopover` re-raised the overlays last. A flight that
+starts while the panel is open needed no code.
+
+Checks: 1933 arithmetic cases against the real function, by a throwaway script. The click table ran 10
+rounds each on a patched VM build. Replay, Pause, and the plane crossing the panel ran only on patched
+builds, because the VM has no Jira token and the plane's line sits above the panel without the patch.
+The owner flew the real build, the 150% scale, and the Mac. A real top taskbar works on the VM: at=1161,53
+under tray=1305,0. Windows' own tray overflow opens off the screen above a top taskbar, so an icon behind
+`^` cannot be reached there. Side taskbars are arithmetic only.
+
+No `Build P/P pages` figure: this repo has no build check (AGENTS.md `# Verification scope`).
+
+---
+
 ## App starts on Windows — #62 (2026-11-05) — ACCEPTED & CLOSED; commits a971a18, 23c9055, 58b9a85
 
 The first complete path on Windows: the app starts, its tray icon can be seen, and one test flight
