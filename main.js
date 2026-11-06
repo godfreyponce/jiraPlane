@@ -6,6 +6,19 @@ const poller = require('./poller');
 const teams = require('./teams');
 const updater = require('./updater');
 
+const LOGIN_START_FLAG = '--login-start';
+
+// A login-item start has no console; the Mac gets the same file from the plist (#19).
+if (process.argv.includes(LOGIN_START_FLAG)) {
+  const logDir = path.join(app.getPath('userData'), 'logs');
+  fs.mkdirSync(logDir, { recursive: true });
+  const logFile = path.join(logDir, 'jiraplane.log');
+  process.stdout.write = process.stderr.write = (chunk) => {
+    fs.appendFileSync(logFile, chunk);
+    return true;
+  };
+}
+
 // Login-launch (#7) means an instance may already be running when the owner
 // starts a dev `npm start` — two pollers would double-fly and double-DM.
 // Second instance exits immediately; quit the tray instance first for dev.
@@ -435,7 +448,7 @@ const REPO_URL = 'https://github.com/godfreyponce/jiraPlane';
 let settingsWin = null;
 
 function settingsState() {
-  return { bannerStyle, flyOn, pollingPaused, launchAtLogin: fs.existsSync(LOGIN_PLIST),
+  return { bannerStyle, flyOn, pollingPaused, launchAtLogin: launchAtLoginIsOn(),
            version: app.getVersion() };
 }
 
@@ -760,13 +773,28 @@ function restartApp() {
   });
 }
 
-// Launch at login (#29) wraps the #7 LaunchAgent: on = the plist exists.
+// Launch at login (#29): on the Mac it wraps the #7 LaunchAgent, on = the plist
+// exists. Windows uses a login item (#66).
 const LOGIN_PLIST = path.join(app.getPath('home'), 'Library', 'LaunchAgents', 'com.jiraplane.app.plist');
 const LOGIN_SERVICE = `gui/${process.getuid?.()}/com.jiraplane.app`;
 const INSTALLER = path.join(__dirname, 'scripts', 'install-login-launch.sh');
 let loginToggleBusy = false;
 
+// args are not self-quoted because Electron quotes each one on write. path is
+// quoted because the read parses it as a command line, and a space would cut it short.
+const LOGIN_ITEM = { name: 'jiraPlane', path: `"${process.execPath}"`, args: [__dirname, LOGIN_START_FLAG] };
+
+function launchAtLoginIsOn() {
+  // Not openAtLogin: it reads only the value named for the AppUserModelId and ignores `name`.
+  if (process.platform === 'win32') return app.getLoginItemSettings(LOGIN_ITEM).executableWillLaunchAtLogin;
+  return fs.existsSync(LOGIN_PLIST);
+}
+
 function setLaunchAtLogin(on) {
+  if (process.platform === 'win32') {
+    app.setLoginItemSettings({ ...LOGIN_ITEM, openAtLogin: on });
+    return pushSettingsState();
+  }
   if (loginToggleBusy || on === fs.existsSync(LOGIN_PLIST)) return pushSettingsState();
   loginToggleBusy = true;
   const done = (err) => {
