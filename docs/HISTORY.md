@@ -11,6 +11,29 @@ From #10 onward, specs and plans are repo-local under `docs/superpowers/`.
 
 ---
 
+## Update check retries after a failure — #74 (2026-11-06) — ACCEPTED, issue open for the reboot check; commit e6a7c5a
+
+The check ran at launch and then every 24 hours, with no retry. The login job can start before Wi-Fi
+has an address, so the launch check failed and the panel showed `Couldn't check for updates` for up to
+a day. On the reboot that showed it, the app started at 12:00:35 and Wi-Fi got its address at 12:01:01.
+The app's own error is lost: that machine's plist predates the #19 log keys, so output went to `/dev/null`.
+
+In `checkForUpdate()`, a failure that sets `check-failed` now schedules one retry after
+`UPDATE_RETRY_MS`, the Jira poll's cadence (60 s by default). `clearTimeout` keeps a failing daily check
+from adding a second retry chain. A newer tag already found, or an update under way or failed, keeps
+its line and schedules no retry. The daily check is unchanged. No plan file: the owner asked for the
+fix directly.
+
+Flown on the Mac with a git config that sent `github.com` to an unresolvable host, cleared after 20 s:
+
+- Before the fix: one `update: check failed`, then no attempt in the next 70 s.
+- After the fix: `update: check failed` at 18:10:19, `update: check: main ahead of v0.1.5` at 18:11:20.
+- Owner read the panel after the login job restarted with the network up: `v0.1.5`, `checked 1m ago`.
+
+Not flown: a real reboot with the fix. That box stays unchecked on #74.
+
+---
+
 ## Windows update notice in the tray panel — #67 (2026-11-06) — ACCEPTED & CLOSED; commit 00c1848
 
 On Windows the update check now finds Git: `updater.js` splits PATH on `path.delimiter` (`;` there) and
