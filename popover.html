@@ -299,6 +299,7 @@
   <button data-preset="checkFailed">Check failed</button>
   <button data-preset="neverChecked">Never checked</button>
   <button data-preset="update">Update</button>
+  <button data-preset="manual">Manual (Windows)</button>
   <button data-preset="installing">Installing</button>
   <button data-preset="restarting">Restarting</button>
   <button data-preset="blocked">Blocked</button>
@@ -344,6 +345,7 @@ function updateLine(update) {
     case 'ahead':        return [update.tag, checked];
     case 'check-failed': return ["Couldn't check for updates", checked];
     case 'available':    return [`${update.tag} available`, ''];
+    case 'manual':       return [`${update.tag} available. See ONBOARDING § 7.`, ''];
     case 'installing':   return [`Updating to ${update.tag}…`, ''];
     case 'restarting':   return ['Restarting after this flight…', ''];
     case 'blocked':      return [`Can't update: ${update.detail}. See ONBOARDING § 7.`, ''];
@@ -352,7 +354,7 @@ function updateLine(update) {
 }
 function updateTone(update) {
   return ['checking', 'current', 'ahead', 'check-failed'].includes(update.phase) ? 'info'
-    : update.phase === 'available' ? 'available'
+    : ['available', 'manual'].includes(update.phase) ? 'available'
     : update.phase === 'blocked' || update.phase === 'failed' ? 'error' : 'busy';
 }
 function renderUpdate(update) {
@@ -496,6 +498,7 @@ function standaloneApi() {
     checkFailed: { ...LIVE, update: { phase: 'check-failed', tag: '', detail: '', checkedAt: checked } },
     neverChecked: { ...LIVE, update: { phase: 'check-failed', tag: '', detail: '', checkedAt: null } },
     update:     { ...LIVE, update: { ...NEWER, phase: 'available',  detail: '' } },
+    manual:     { ...LIVE, update: { ...NEWER, phase: 'manual',     detail: '' } },
     installing: { ...LIVE, update: { ...NEWER, phase: 'installing', detail: '' } },
     restarting: { ...LIVE, update: { ...NEWER, phase: 'restarting', detail: '' } },
     blocked:    { ...LIVE, update: { ...NEWER, phase: 'blocked',    detail: 'local edits in main.js, popover.html' } },

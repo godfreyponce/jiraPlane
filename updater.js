@@ -13,20 +13,20 @@ const INSTALL_TIMEOUT_MS = 15 * 60_000;
 
 // launchd's PATH is /usr/bin:/bin:/usr/sbin:/sbin (#24), so resolve absolute paths up front.
 function resolveBin(name) {
-  const dirs = [...(process.env.PATH || '').split(':'), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+  const dirs = [...(process.env.PATH || '').split(path.delimiter), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
   for (const dir of dirs) {
     if (dir && fs.existsSync(path.join(dir, name))) return path.join(dir, name);
   }
   return '';
 }
 
-const GIT_BIN = resolveBin('git');
+const GIT_BIN = resolveBin(process.platform === 'win32' ? 'git.exe' : 'git');
 const NPM_BIN = resolveBin('npm');
 
 // npm is a `#!/usr/bin/env node` script: its own directory goes on the child's PATH so
 // `env` finds the node that sits beside it.
 const childEnv = NPM_BIN
-  ? { ...process.env, PATH: `${path.dirname(NPM_BIN)}:${process.env.PATH || ''}` }
+  ? { ...process.env, PATH: `${path.dirname(NPM_BIN)}${path.delimiter}${process.env.PATH || ''}` }
   : process.env;
 
 // git and npm both end on advice ("…and the repository exists.", npm's log path), so the
