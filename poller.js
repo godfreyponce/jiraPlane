@@ -33,6 +33,8 @@ function loadEnv() {
   return { ...vars, ...process.env };
 }
 
+const DEFAULT_POLL_SECONDS = 60;
+
 function buildConfig() {
   const env = loadEnv();
   const need = (name) => {
@@ -45,7 +47,7 @@ function buildConfig() {
     username: need('JIRA_USERNAME'),
     userKey: need('JIRA_USER_KEY'),
     // Defaults mirror JiraAlerts/src/config.py; the valve threshold of 3 is from issue #2.
-    pollSeconds: parseInt(env.POLL_SECONDS || '60', 10),
+    pollSeconds: parseInt(env.POLL_SECONDS || DEFAULT_POLL_SECONDS, 10),
     lookbackMinutes: parseInt(env.LOOKBACK_MINUTES || '30', 10),
     commentsPerIssue: parseInt(env.COMMENTS_PER_ISSUE || '20', 10),
     pruneDays: parseInt(env.PRUNE_DAYS || '30', 10),
@@ -364,4 +366,4 @@ async function cycle() {
   return events;
 }
 
-module.exports = { cycle, config, configError };
+module.exports = { cycle, config, configError, DEFAULT_POLL_SECONDS };

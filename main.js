@@ -700,7 +700,7 @@ ipcMain.on('popover-update', () => runUpdate()); // the panel stays open to show
 const UPDATE_CHECK_MS = 24 * 60 * 60 * 1000; // "once a day" is #48's guess
 // The login job starts before Wi-Fi has an address, so the launch check can fail on
 // a healthy machine. Same cadence as the Jira poll, which recovers the same way.
-const UPDATE_RETRY_MS = poller.config.pollSeconds * 1000;
+const UPDATE_RETRY_MS = (poller.config?.pollSeconds ?? poller.DEFAULT_POLL_SECONDS) * 1000;
 let updateRetry = null;
 // popover.html finishSwoosh(): lit, then park (#58), then 500 ms parked (a guess) before the restart.
 const FINISH_MS = 350 + 600 + 500 + 500;
